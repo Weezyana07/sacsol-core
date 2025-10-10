@@ -1,0 +1,1479 @@
+openapi: 3.0.3
+info:
+  title: Sacsol API
+  version: 1.0.0
+  description: Inventory management API for Sacsol
+paths:
+  /api/audit-logs/:
+    get:
+      operationId: audit_logs_list
+      description: |-
+        Read-only listing of audit events.
+        - Requires auth; object-level access enforced via IsOwnerOrManager when filtering by entry.
+      parameters:
+      - in: query
+        name: action
+        schema:
+          type: string
+        description: Filter by action (create/update/soft_delete)
+      - in: query
+        name: entry
+        schema:
+          type: string
+        description: Filter by InventoryEntry ID (UUID)
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - in: query
+        name: user
+        schema:
+          type: string
+        description: Filter by username
+      tags:
+      - Inventory
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditLogList'
+          description: ''
+  /api/audit-logs/{id}/:
+    get:
+      operationId: audit_logs_retrieve
+      description: |-
+        Read-only listing of audit events.
+        - Requires auth; object-level access enforced via IsOwnerOrManager when filtering by entry.
+      parameters:
+      - in: query
+        name: action
+        schema:
+          type: string
+        description: Filter by action (create/update/soft_delete)
+      - in: query
+        name: entry
+        schema:
+          type: string
+        description: Filter by InventoryEntry ID (UUID)
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this audit log.
+        required: true
+      - in: query
+        name: user
+        schema:
+          type: string
+        description: Filter by username
+      tags:
+      - Inventory
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLog'
+          description: ''
+  /api/auth/token/:
+    post:
+      operationId: auth_token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/health/:
+    get:
+      operationId: health_check
+      description: Lightweight liveness check.
+      tags:
+      - Health
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/inventory/:
+    get:
+      operationId: inventory_list
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: Start date (inclusive)
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: offset
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Free text search
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: Status filter
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+        description: End date (inclusive)
+      tags:
+      - Inventory
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInventoryEntryList'
+          description: ''
+    post:
+      operationId: inventory_create
+      tags:
+      - inventory
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryEntry'
+          description: ''
+  /api/inventory/{id}/:
+    get:
+      operationId: inventory_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory entry.
+        required: true
+      tags:
+      - inventory
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryEntry'
+          description: ''
+    put:
+      operationId: inventory_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory entry.
+        required: true
+      tags:
+      - inventory
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryEntry'
+          description: ''
+    patch:
+      operationId: inventory_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory entry.
+        required: true
+      tags:
+      - inventory
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInventoryEntryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInventoryEntryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInventoryEntryRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryEntry'
+          description: ''
+    delete:
+      operationId: inventory_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory entry.
+        required: true
+      tags:
+      - inventory
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/inventory/{id}/audit-logs/:
+    get:
+      operationId: inventory_audit_logs
+      description: List audit events for a specific inventory entry (most recent first).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory entry.
+        required: true
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - inventory
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditLogList'
+          description: ''
+  /api/inventory/export/:
+    get:
+      operationId: inventory_export_csv
+      description: Download filtered inventory as CSV. Honors q, status, from, to.
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: Start date (inclusive)
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Free text search
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: Status filter
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+        description: End date (inclusive)
+      tags:
+      - Reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: CSV file
+  /api/inventory/import-excel/:
+    post:
+      operationId: inventory_import_excel
+      description: |-
+        Upload .xlsx or .csv via multipart/form-data with field `file`.
+        Required columns: date, truck_registration, quantity (aliases supported).
+      tags:
+      - Inventory
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          description: Invalid file or content
+  /api/inventory/summary/:
+    get:
+      operationId: inventory_summary
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: Start date (inclusive)
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Free text search
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: Status filter
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+        description: End date (inclusive)
+      tags:
+      - Inventory
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/users/:
+    get:
+      operationId: users_list
+      description: |-
+        Super Admin–only management of users.
+        Also exposes a `/me/` endpoint for any authenticated user.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - Users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserBaseList'
+          description: ''
+    post:
+      operationId: users_create
+      description: |-
+        Super Admin–only management of users.
+        Also exposes a `/me/` endpoint for any authenticated user.
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBase'
+          description: ''
+  /api/users/{id}/:
+    get:
+      operationId: users_retrieve
+      description: |-
+        Super Admin–only management of users.
+        Also exposes a `/me/` endpoint for any authenticated user.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - Users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBase'
+          description: ''
+    put:
+      operationId: users_update
+      description: |-
+        Super Admin–only management of users.
+        Also exposes a `/me/` endpoint for any authenticated user.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBase'
+          description: ''
+    patch:
+      operationId: users_partial_update
+      description: |-
+        Super Admin–only management of users.
+        Also exposes a `/me/` endpoint for any authenticated user.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBase'
+          description: ''
+    delete:
+      operationId: users_destroy
+      description: |-
+        Super Admin–only management of users.
+        Also exposes a `/me/` endpoint for any authenticated user.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - Users
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/users/{id}/set-password/:
+    post:
+      operationId: users_set_password
+      description: Super Admin can set a new password for a user.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPasswordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SetPasswordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SetPasswordRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: Password updated successfully
+  /api/users/me/:
+    get:
+      operationId: users_me
+      description: Return the currently authenticated user.
+      tags:
+      - Users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+components:
+  schemas:
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        entry_id:
+          type: string
+          format: uuid
+          readOnly: true
+        user_username:
+          type: string
+          readOnly: true
+        action:
+          type: string
+          readOnly: true
+        changes:
+          readOnly: true
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - action
+      - changes
+      - entry_id
+      - id
+      - timestamp
+      - user_username
+    BlankEnum:
+      enum:
+      - ''
+    InventoryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        date:
+          type: string
+          format: date
+        customer_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        mineral_or_equipment:
+          type: string
+          nullable: true
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+        supplier_agent:
+          type: string
+          nullable: true
+          maxLength: 255
+        truck_registration:
+          type: string
+          maxLength: 80
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        driver_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        driver_phone:
+          type: string
+          nullable: true
+          maxLength: 50
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+        unit:
+          type: string
+          maxLength: 20
+        origin:
+          type: string
+          nullable: true
+          maxLength: 255
+        destination:
+          type: string
+          nullable: true
+          maxLength: 255
+        location:
+          type: string
+          nullable: true
+          maxLength: 255
+        transporter_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        payment_type:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        analysis_results:
+          type: string
+          nullable: true
+        gross_weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        tare_weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        net_weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        comment:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        deleted:
+          type: boolean
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - date
+      - deleted
+      - id
+      - modified_by
+      - truck_registration
+      - updated_at
+    InventoryEntryRequest:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        customer_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        mineral_or_equipment:
+          type: string
+          nullable: true
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+        supplier_agent:
+          type: string
+          nullable: true
+          maxLength: 255
+        truck_registration:
+          type: string
+          minLength: 1
+          maxLength: 80
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        driver_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        driver_phone:
+          type: string
+          nullable: true
+          maxLength: 50
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+        unit:
+          type: string
+          minLength: 1
+          maxLength: 20
+        origin:
+          type: string
+          nullable: true
+          maxLength: 255
+        destination:
+          type: string
+          nullable: true
+          maxLength: 255
+        location:
+          type: string
+          nullable: true
+          maxLength: 255
+        transporter_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        payment_type:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        analysis_results:
+          type: string
+          nullable: true
+        gross_weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        tare_weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        net_weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        comment:
+          type: string
+          nullable: true
+      required:
+      - date
+      - truck_registration
+    Me:
+      type: object
+      description: Read-only representation of the current user.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        role:
+          type: string
+          readOnly: true
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - id
+      - role
+      - username
+    NullEnum:
+      enum:
+      - null
+    PaginatedAuditLogList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+    PaginatedInventoryEntryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryEntry'
+    PaginatedUserBaseList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserBase'
+    PatchedInventoryEntryRequest:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        customer_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        mineral_or_equipment:
+          type: string
+          nullable: true
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+        supplier_agent:
+          type: string
+          nullable: true
+          maxLength: 255
+        truck_registration:
+          type: string
+          minLength: 1
+          maxLength: 80
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        driver_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        driver_phone:
+          type: string
+          nullable: true
+          maxLength: 50
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+        unit:
+          type: string
+          minLength: 1
+          maxLength: 20
+        origin:
+          type: string
+          nullable: true
+          maxLength: 255
+        destination:
+          type: string
+          nullable: true
+          maxLength: 255
+        location:
+          type: string
+          nullable: true
+          maxLength: 255
+        transporter_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        payment_type:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        analysis_results:
+          type: string
+          nullable: true
+        gross_weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        tare_weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        net_weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          nullable: true
+        comment:
+          type: string
+          nullable: true
+    PatchedUserUpdateRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+    PaymentTypeEnum:
+      enum:
+      - cash
+      - transfer
+      - credit
+      - other
+      type: string
+      description: |-
+        * `cash` - Cash
+        * `transfer` - Transfer
+        * `credit` - Credit
+        * `other` - Other
+    RoleEnum:
+      enum:
+      - staff
+      - manager
+      type: string
+      description: |-
+        * `staff` - staff
+        * `manager` - manager
+    SetPasswordRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          writeOnly: true
+          minLength: 6
+      required:
+      - password
+    StatusEnum:
+      enum:
+      - pending
+      - in_transit
+      - delivered
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `in_transit` - In Transit
+        * `delivered` - Delivered
+        * `rejected` - Rejected
+    TokenObtainPair:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    TokenObtainPairRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
+    UserBase:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        role:
+          type: string
+          readOnly: true
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - id
+      - role
+      - username
+    UserCreateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+          minLength: 6
+      required:
+      - password
+      - role
+      - username
+    UserUpdateRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+servers:
+- url: /
