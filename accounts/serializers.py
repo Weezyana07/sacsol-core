@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, AbstractUser
 from rest_framework import serializers
 from django.contrib.auth import password_validation
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 UserModel = get_user_model()
 
@@ -140,3 +141,21 @@ class ChangeOwnPasswordSerializer(serializers.Serializer):
         new = attrs.get("new_password") or ""
         password_validation.validate_password(new, user)
         return attrs
+    
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token["is_superuser"] = user.is_superuser
+        token["is_staff"] = user.is_staff
+        token["groups"] = list(user.groups.values_list("name", flat=True))
+        return token
+
+class TokenPairResponseSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+    access = serializers.CharField()
+    # Document your custom claims (payload of `access`)
+    # Not literally returned in the top-level response, but helpful for docs:
+    is_superuser = serializers.BooleanField(help_text="Claim in access token", required=False)
+    is_staff = serializers.BooleanField(required=False)
+    groups = serializers.ListField(child=serializers.CharField(), required=False)
