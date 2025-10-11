@@ -9,9 +9,12 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
+from rest_framework.exceptions import PermissionDenied
+
+from accounts.permissions import IsSuperAdmin
 
 from .models import InventoryEntry, AuditLog
-from .permissions import IsOwnerOrManager
+from .permissions import ReadOnlyOrSuperAdmin
 from .filters import apply_inventory_filters
 
 from .serializers import InventoryEntrySerializer, AuditLogSerializer
@@ -42,20 +45,29 @@ LIST_PARAMS = [
 class InventoryViewSet(viewsets.ModelViewSet):
     queryset = InventoryEntry.objects.filter(deleted=False)
     serializer_class = InventoryEntrySerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrManager]  # 🔒 require auth for reads & writes
+    permission_classes = [ ReadOnlyOrSuperAdmin]  
     parser_classes = (JSONParser, MultiPartParser, FormParser)
 
+    def get_permissions(self):
+        if getattr(self, "action", None) in {"import_excel", "audit_logs"}:
+            return [IsSuperAdmin()]
+        return [perm() for perm in self.permission_classes]
+    
     def get_queryset(self):
         qs = super().get_queryset()
         return apply_inventory_filters(qs, self.request.query_params)
 
     # ---- audit logging centralized here ----
     def perform_create(self, serializer):
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only superadmin can create inventory.")
         obj = serializer.save(created_by=self.request.user)
         AuditLog.objects.create(entry=obj, user=self.request.user,
-                        action="create", changes=_json_safe(serializer.validated_data))
+                                action="create", changes=_json_safe(serializer.validated_data))
 
     def perform_update(self, serializer):
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only superadmin can update inventory.")
         instance = self.get_object()
         before = {f: getattr(instance, f) for f in serializer.validated_data.keys()}
         obj = serializer.save(modified_by=self.request.user)
@@ -64,10 +76,40 @@ class InventoryViewSet(viewsets.ModelViewSet):
             AuditLog.objects.create(entry=obj, user=self.request.user,
                                     action="update", changes=_json_safe(delta))
 
+        if not self.request.user.is_superuser:
+            log.warning("BLOCKED %s by user=%s (superuser=%s, path=%s)",
+                        self.action,
+                        getattr(self.request.user, "username", None),
+                        getattr(self.request.user, "is_superuser", None),
+                        self.request.path)
+            raise PermissionDenied("Only superadmin can update inventory.")
+        
     def perform_destroy(self, instance):
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only superadmin can delete inventory.")
         instance.soft_delete()
         AuditLog.objects.create(entry=instance, user=self.request.user, action="soft_delete")
 
+    def create(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise PermissionDenied("Only superadmin can create inventory.")
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise PermissionDenied("Only superadmin can update inventory.")
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise PermissionDenied("Only superadmin can update inventory.")
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise PermissionDenied("Only superadmin can delete inventory.")
+        return super().destroy(request, *args, **kwargs)
+    
     # ---- list (OpenAPI) ----
     @extend_schema(
         parameters=LIST_PARAMS,
@@ -97,6 +139,13 @@ class InventoryViewSet(viewsets.ModelViewSet):
         return Response({"total": total, "by_status": by_status, **totals})
 
     # ---- import (.xlsx/.csv) ----
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="import-excel",
+        parser_classes=[MultiPartParser, FormParser],
+        permission_classes=[IsSuperAdmin],
+    )
     @extend_schema(
         description=(
             "Upload .xlsx or .csv via multipart/form-data with field `file`.\n"
@@ -107,8 +156,10 @@ class InventoryViewSet(viewsets.ModelViewSet):
         tags=["Inventory"],
         operation_id="inventory_import_excel",
     )
-    @action(detail=False, methods=["post"], url_path="import-excel", parser_classes=[MultiPartParser, FormParser])
     def import_excel(self, request):
+        if not request.user.is_superuser:
+            raise PermissionDenied("Only superadmin can import inventory.")
+
         file_obj = request.FILES.get("file")
         if not file_obj:
             return Response({"detail": "file required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -274,14 +325,23 @@ class InventoryViewSet(viewsets.ModelViewSet):
         return resp
 
     # --- NEW: nested audit logs for a specific entry ---
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="audit-logs",
+        permission_classes=[IsSuperAdmin],
+    )
     @extend_schema(
         responses={200: AuditLogSerializer(many=True)},
         operation_id="inventory_audit_logs",
         description="List audit events for a specific inventory entry (most recent first).",
     )
-    @action(detail=True, methods=["get"], url_path="audit-logs", permission_classes=[permissions.IsAuthenticated, IsOwnerOrManager])
     def audit_logs(self, request, pk=None):
-        entry = self.get_object()  # enforces object-level perms
+        if not request.user.is_superuser:
+            raise PermissionDenied("Only superadmin can view audit logs.")
+
+        entry = self.get_object()
+
         logs = entry.audit_logs.select_related("user").all().order_by("-timestamp")
         page = self.paginate_queryset(logs)
         if page is not None:
@@ -301,13 +361,10 @@ class InventoryViewSet(viewsets.ModelViewSet):
     tags=["Inventory"],
 )
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    Read-only listing of audit events.
-    - Requires auth; object-level access enforced via IsOwnerOrManager when filtering by entry.
-    """
+    """Superadmin-only read-only listing of audit events."""
     queryset = AuditLog.objects.select_related("entry", "user").all().order_by("-timestamp")
     serializer_class = AuditLogSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsSuperAdmin]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -317,17 +374,6 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
 
         if entry_id:
             qs = qs.filter(entry_id=entry_id)
-            # enforce object-level permission relative to the entry
-            # only show logs if the user can access the entry
-            try:
-                entry = InventoryEntry.objects.get(pk=entry_id, deleted=False)
-            except InventoryEntry.DoesNotExist:
-                return qs.none()
-            perm = IsOwnerOrManager()
-            # If not allowed to view the entry, hide logs
-            if not perm.has_object_permission(self.request, self, entry):
-                return qs.none()
-
         if username:
             qs = qs.filter(user__username=username)
         if action:

@@ -7,9 +7,7 @@ paths:
   /api/audit-logs/:
     get:
       operationId: audit_logs_list
-      description: |-
-        Read-only listing of audit events.
-        - Requires auth; object-level access enforced via IsOwnerOrManager when filtering by entry.
+      description: Superadmin-only read-only listing of audit events.
       parameters:
       - in: query
         name: action
@@ -52,9 +50,7 @@ paths:
   /api/audit-logs/{id}/:
     get:
       operationId: audit_logs_retrieve
-      description: |-
-        Read-only listing of audit events.
-        - Requires auth; object-level access enforced via IsOwnerOrManager when filtering by entry.
+      description: Superadmin-only read-only listing of audit events.
       parameters:
       - in: query
         name: action
@@ -333,8 +329,7 @@ paths:
           description: No response body
   /api/inventory/{id}/audit-logs/:
     get:
-      operationId: inventory_audit_logs
-      description: List audit events for a specific inventory entry (most recent first).
+      operationId: inventory_audit_logs_retrieve
       parameters:
       - in: path
         name: id
@@ -343,18 +338,6 @@ paths:
           format: uuid
         description: A UUID string identifying this inventory entry.
         required: true
-      - name: limit
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
-      - name: offset
-        required: false
-        in: query
-        description: The initial index from which to return the results.
-        schema:
-          type: integer
       tags:
       - inventory
       security:
@@ -364,7 +347,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedAuditLogList'
+                $ref: '#/components/schemas/InventoryEntry'
           description: ''
   /api/inventory/export/:
     get:
@@ -407,21 +390,18 @@ paths:
           description: CSV file
   /api/inventory/import-excel/:
     post:
-      operationId: inventory_import_excel
-      description: |-
-        Upload .xlsx or .csv via multipart/form-data with field `file`.
-        Required columns: date, truck_registration, quantity (aliases supported).
+      operationId: inventory_import_excel_create
       tags:
-      - Inventory
+      - inventory
       requestBody:
         content:
           multipart/form-data:
             schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
+              $ref: '#/components/schemas/InventoryEntryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -429,11 +409,8 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/InventoryEntry'
           description: ''
-        '400':
-          description: Invalid file or content
   /api/inventory/summary/:
     get:
       operationId: inventory_summary

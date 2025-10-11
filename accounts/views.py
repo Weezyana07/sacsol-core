@@ -55,8 +55,14 @@ class UserViewSet(viewsets.ModelViewSet):
     # ---- admin CRUD passthroughs (for explicit schema) ----
     @extend_schema(request=UserCreateSerializer, responses={201: UserBaseSerializer}, operation_id="users_create")
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
+        ser = UserCreateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        user = ser.save()
+        # 🔁 respond with read serializer so FE gets role="manager" immediately
+        out = UserBaseSerializer(user)
+        headers = self.get_success_headers(out.data)
+        return Response(out.data, status=status.HTTP_201_CREATED, headers=headers)
+    
     @extend_schema(request=UserUpdateSerializer, responses={200: UserBaseSerializer}, operation_id="users_update")
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)

@@ -50,6 +50,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'core.middleware.BlockInventoryWritesForNonSuperuser',  # admin-only guard
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
