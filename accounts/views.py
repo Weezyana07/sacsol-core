@@ -1,10 +1,9 @@
 # accounts/views.py
 from django.contrib.auth import get_user_model
-from rest_framework import viewsets, permissions, status
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiResponse
-from drf_spectacular.types import OpenApiTypes
 
 from .permissions import IsSuperAdmin
 from .serializers import (
@@ -13,33 +12,37 @@ from .serializers import (
     UserUpdateSerializer,
     MeSerializer,
     SetPasswordSerializer,
+    ChangeOwnPasswordSerializer,  # <-- make sure this exists in serializers.py
 )
 
 User = get_user_model()
+
 
 @extend_schema(tags=["Users"])
 class UserViewSet(viewsets.ModelViewSet):
     """
     Super Admin–only management of users.
-    Also exposes a `/me/` endpoint for any authenticated user.
+    Also exposes:
+      - GET  /api/users/me/                 : current user profile (any authenticated user)
+      - POST /api/users/me/password/        : change own password (any authenticated user)
+      - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
     """
     queryset = User.objects.all().order_by("-date_joined")
     serializer_class = UserBaseSerializer
     permission_classes = [IsSuperAdmin]  # default for admin actions
 
-    def get_queryset(self):
-        # Optionally hide superusers from non-superadmin—here only superadmin can access anyway.
-        return super().get_queryset()
-
+    # ---- permissions ----
     def get_permissions(self):
-        # Allow any authenticated user to hit /me/
-        if self.action == "me":
+        # Endpoints any authenticated user may hit
+        if self.action in ("me", "change_own_password"):
             return [permissions.IsAuthenticated()]
+        # Only superadmin can set someone else's password
         if self.action == "set_password":
-            # Only superadmin can change others' passwords through this admin endpoint
             return [IsSuperAdmin()]
+        # Fallback to default for admin CRUD
         return [perm() if isinstance(perm, type) else perm for perm in self.permission_classes]
 
+    # ---- serializers ----
     def get_serializer_class(self):
         if self.action == "create":
             return UserCreateSerializer
@@ -49,27 +52,16 @@ class UserViewSet(viewsets.ModelViewSet):
             return MeSerializer
         return UserBaseSerializer
 
-    @extend_schema(
-        request=UserCreateSerializer,
-        responses={201: UserBaseSerializer},
-        operation_id="users_create",
-    )
+    # ---- admin CRUD passthroughs (for explicit schema) ----
+    @extend_schema(request=UserCreateSerializer, responses={201: UserBaseSerializer}, operation_id="users_create")
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-    @extend_schema(
-        request=UserUpdateSerializer,
-        responses={200: UserBaseSerializer},
-        operation_id="users_update",
-    )
+    @extend_schema(request=UserUpdateSerializer, responses={200: UserBaseSerializer}, operation_id="users_update")
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
-    @extend_schema(
-        request=UserUpdateSerializer,
-        responses={200: UserBaseSerializer},
-        operation_id="users_partial_update",
-    )
+    @extend_schema(request=UserUpdateSerializer, responses={200: UserBaseSerializer}, operation_id="users_partial_update")
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
 
@@ -84,6 +76,23 @@ class UserViewSet(viewsets.ModelViewSet):
         ser = MeSerializer(request.user)
         return Response(ser.data)
 
+    # ---------- Self-service: change own password ----------
+    @extend_schema(
+        request=ChangeOwnPasswordSerializer,
+        responses={200: OpenApiResponse(description="Password updated successfully")},
+        operation_id="users_change_own_password",
+        description="Authenticated user can change their own password by providing current and new passwords.",
+    )
+    @action(detail=False, methods=["post"], url_path="me/password")
+    def change_own_password(self, request):
+        ser = ChangeOwnPasswordSerializer(data=request.data, context={"request": request})
+        ser.is_valid(raise_exception=True)
+
+        user = request.user
+        user.set_password(ser.validated_data["new_password"])
+        user.save()
+        return Response({"detail": "Password updated."}, status=status.HTTP_200_OK)
+
     # ---------- Admin: set password for a user ----------
     @extend_schema(
         request=SetPasswordSerializer,
@@ -96,6 +105,7 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         ser = SetPasswordSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
+
         user.set_password(ser.validated_data["password"])
         user.save()
         return Response({"detail": "Password updated."}, status=status.HTTP_200_OK)

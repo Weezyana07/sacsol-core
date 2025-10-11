@@ -3,6 +3,7 @@ from typing import Any
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, AbstractUser
 from rest_framework import serializers
+from django.contrib.auth import password_validation
 
 UserModel = get_user_model()
 
@@ -93,3 +94,22 @@ class MeSerializer(UserBaseSerializer):
 
 class SetPasswordSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=6)
+
+class ChangeOwnPasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, trim_whitespace=False)
+    new_password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            raise serializers.ValidationError({"detail": "Authentication required."})
+
+        curr = attrs.get("current_password") or ""
+        if not user.check_password(curr):
+            raise serializers.ValidationError({"current_password": "Current password is incorrect."})
+
+        # Apply Django’s password validators (AUTH_PASSWORD_VALIDATORS)
+        new = attrs.get("new_password") or ""
+        password_validation.validate_password(new, user)
+        return attrs

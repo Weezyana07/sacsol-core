@@ -622,7 +622,10 @@ paths:
       operationId: users_list
       description: |-
         Super Admin–only management of users.
-        Also exposes a `/me/` endpoint for any authenticated user.
+        Also exposes:
+          - GET  /api/users/me/                 : current user profile (any authenticated user)
+          - POST /api/users/me/password/        : change own password (any authenticated user)
+          - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
       parameters:
       - name: limit
         required: false
@@ -651,7 +654,10 @@ paths:
       operationId: users_create
       description: |-
         Super Admin–only management of users.
-        Also exposes a `/me/` endpoint for any authenticated user.
+        Also exposes:
+          - GET  /api/users/me/                 : current user profile (any authenticated user)
+          - POST /api/users/me/password/        : change own password (any authenticated user)
+          - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
       tags:
       - Users
       requestBody:
@@ -680,7 +686,10 @@ paths:
       operationId: users_retrieve
       description: |-
         Super Admin–only management of users.
-        Also exposes a `/me/` endpoint for any authenticated user.
+        Also exposes:
+          - GET  /api/users/me/                 : current user profile (any authenticated user)
+          - POST /api/users/me/password/        : change own password (any authenticated user)
+          - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
       parameters:
       - in: path
         name: id
@@ -703,7 +712,10 @@ paths:
       operationId: users_update
       description: |-
         Super Admin–only management of users.
-        Also exposes a `/me/` endpoint for any authenticated user.
+        Also exposes:
+          - GET  /api/users/me/                 : current user profile (any authenticated user)
+          - POST /api/users/me/password/        : change own password (any authenticated user)
+          - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
       parameters:
       - in: path
         name: id
@@ -737,7 +749,10 @@ paths:
       operationId: users_partial_update
       description: |-
         Super Admin–only management of users.
-        Also exposes a `/me/` endpoint for any authenticated user.
+        Also exposes:
+          - GET  /api/users/me/                 : current user profile (any authenticated user)
+          - POST /api/users/me/password/        : change own password (any authenticated user)
+          - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
       parameters:
       - in: path
         name: id
@@ -771,7 +786,10 @@ paths:
       operationId: users_destroy
       description: |-
         Super Admin–only management of users.
-        Also exposes a `/me/` endpoint for any authenticated user.
+        Also exposes:
+          - GET  /api/users/me/                 : current user profile (any authenticated user)
+          - POST /api/users/me/password/        : change own password (any authenticated user)
+          - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
       parameters:
       - in: path
         name: id
@@ -831,6 +849,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Me'
           description: ''
+  /api/users/me/password/:
+    post:
+      operationId: users_change_own_password
+      description: Authenticated user can change their own password by providing current
+        and new passwords.
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeOwnPasswordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChangeOwnPasswordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChangeOwnPasswordRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: Password updated successfully
 components:
   schemas:
     AuditLog:
@@ -867,6 +909,20 @@ components:
     BlankEnum:
       enum:
       - ''
+    ChangeOwnPasswordRequest:
+      type: object
+      properties:
+        current_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - current_password
+      - new_password
     InventoryEntry:
       type: object
       properties:
