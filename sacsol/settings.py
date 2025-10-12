@@ -38,7 +38,7 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS','*').split(',')
 INSTALLED_APPS = [
     'django.contrib.admin','django.contrib.auth','django.contrib.contenttypes','django.contrib.sessions','django.contrib.messages','django.contrib.staticfiles',
     'rest_framework','rest_framework_simplejwt','drf_spectacular','corsheaders',
-    'inventory','accounts.apps.AccountsConfig'
+    'inventory','accounts.apps.AccountsConfig','procurement'
 ]
 
 
@@ -53,7 +53,10 @@ MIDDLEWARE = [
     'core.middleware.BlockInventoryWritesForNonSuperuser',  # admin-only guard
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+# --- CORS/CSRF ---
+CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "true").lower() == "true"
+CORS_ALLOWED_ORIGINS = [o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS","").split(",") if o.strip()]
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS","").split(",") if o.strip()]
 
 ROOT_URLCONF = 'sacsol.urls'
 
@@ -78,12 +81,22 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_PERMISSION_CLASSES': (  # ← add this
+        'rest_framework.permissions.IsAuthenticated',
+    ),
     "EXCEPTION_HANDLER": "core.exceptions.exception_handler",
-
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 25,
 }
+
+REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = [
+    "rest_framework.throttling.UserRateThrottle",
+]
+REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
+    "user": os.getenv("DRF_THROTTLE_USER", "2000/day"),
+}
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
@@ -97,6 +110,8 @@ SPECTACULAR_SETTINGS = {
     "SERVERS": [{"url": "/"}],
     "COMPONENT_SPLIT_REQUEST": True,
     "SORT_OPERATIONS": True,
+    "SCHEMA_PATH_PREFIX": r"/api",  # if you mount under /api
+    "SWAGGER_UI_SETTINGS": {"persistAuthorization": True},
 }
 
 # Database
@@ -152,7 +167,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.getenv("TIMEZONE", "Africa/Lagos")
 
 USE_I18N = True
 
@@ -163,6 +178,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -172,3 +188,17 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Media (only if you use file uploads)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# --- Procurement knobs ---
+
+MAX_PDF_UPLOAD_MB = int(os.getenv("MAX_PDF_UPLOAD_MB", "5"))
+IMAGE_MAX_DIM = int(os.getenv("IMAGE_MAX_DIM", "2000"))
+SACSOL_LPO_PREFIX = os.getenv("SACSOL_LPO_PREFIX", "LPO")
+SACSOL_SUPPLIER_PREFIX = os.getenv("SACSOL_SUPPLIER_PREFIX", "SUP")
+SITE_URL = os.getenv("SITE_URL")
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL")
+MAX_IMAGE_UPLOAD_KB = int(os.getenv("MAX_IMAGE_UPLOAD_KB", "300"))
+ALLOWED_ATTACHMENT_CONTENT_TYPES = os.getenv(
+    "ALLOWED_ATTACHMENT_CONTENT_TYPES",
+    "image/jpeg,image/png,image/webp,application/pdf"
+).split(",")

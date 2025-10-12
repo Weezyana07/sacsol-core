@@ -139,6 +139,158 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenRefresh'
           description: ''
+  /api/grn/:
+    get:
+      operationId: grn_list
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - Procurement / GRN
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedGoodsReceiptList'
+          description: ''
+    post:
+      operationId: grn_create
+      tags:
+      - Procurement / GRN
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoodsReceiptRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoodsReceiptRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoodsReceiptRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoodsReceipt'
+          description: ''
+  /api/grn/{id}/:
+    get:
+      operationId: grn_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this goods receipt.
+        required: true
+      tags:
+      - Procurement / GRN
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoodsReceipt'
+          description: ''
+    put:
+      operationId: grn_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this goods receipt.
+        required: true
+      tags:
+      - grn
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoodsReceiptRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoodsReceiptRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoodsReceiptRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoodsReceipt'
+          description: ''
+    patch:
+      operationId: grn_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this goods receipt.
+        required: true
+      tags:
+      - grn
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedGoodsReceiptRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedGoodsReceiptRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedGoodsReceiptRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoodsReceipt'
+          description: ''
+    delete:
+      operationId: grn_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this goods receipt.
+        required: true
+      tags:
+      - grn
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/health/:
     get:
       operationId: health_check
@@ -223,6 +375,258 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryEntry'
           description: ''
+  /api/inventory-entries/:
+    get:
+      operationId: inventory_entries_list
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - inventory-entries
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInventoryEntryList'
+          description: ''
+    post:
+      operationId: inventory_entries_create
+      tags:
+      - inventory-entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryEntry'
+          description: ''
+  /api/inventory-entries/{id}/:
+    get:
+      operationId: inventory_entries_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory entry.
+        required: true
+      tags:
+      - inventory-entries
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryEntry'
+          description: ''
+    put:
+      operationId: inventory_entries_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory entry.
+        required: true
+      tags:
+      - inventory-entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InventoryEntryRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryEntry'
+          description: ''
+    patch:
+      operationId: inventory_entries_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory entry.
+        required: true
+      tags:
+      - inventory-entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInventoryEntryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInventoryEntryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInventoryEntryRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryEntry'
+          description: ''
+    delete:
+      operationId: inventory_entries_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory entry.
+        required: true
+      tags:
+      - inventory-entries
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/inventory-entries/{id}/attachments/:
+    get:
+      operationId: inventory_entry_attachments_list
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory entry.
+        required: true
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - Inventory / Attachments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInventoryAttachmentList'
+          description: ''
+    post:
+      operationId: inventory_entry_attachments_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory entry.
+        required: true
+      tags:
+      - Inventory / Attachments
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                kind:
+                  type: string
+                  enum:
+                  - photo
+                  - spec
+                  - other
+              required:
+              - file
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryAttachment'
+          description: ''
+  /api/inventory-entries/{id}/attachments/{att_id}/:
+    delete:
+      operationId: inventory_entry_delete_attachment
+      parameters:
+      - in: path
+        name: att_id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory entry.
+        required: true
+      tags:
+      - Inventory / Attachments
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/inventory/{id}/:
     get:
       operationId: inventory_retrieve
@@ -449,6 +853,375 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/lpos/:
+    get:
+      operationId: lpo_list
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - Procurement / LPO
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLPOList'
+          description: ''
+    post:
+      operationId: lpo_create
+      tags:
+      - Procurement / LPO
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LPO'
+          description: ''
+  /api/lpos/{id}/:
+    get:
+      operationId: lpo_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lpo.
+        required: true
+      tags:
+      - Procurement / LPO
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LPO'
+          description: ''
+    put:
+      operationId: lpo_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lpo.
+        required: true
+      tags:
+      - Procurement / LPO
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LPO'
+          description: ''
+    patch:
+      operationId: lpo_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lpo.
+        required: true
+      tags:
+      - Procurement / LPO
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLPORequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLPORequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLPORequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LPO'
+          description: ''
+    delete:
+      operationId: lpo_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lpo.
+        required: true
+      tags:
+      - Procurement / LPO
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/lpos/{id}/approve/:
+    post:
+      operationId: lpo_approve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lpo.
+        required: true
+      tags:
+      - Procurement / LPO
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/lpos/{id}/attachments/:
+    get:
+      operationId: lpo_attachments_list
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lpo.
+        required: true
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - Procurement / LPO Attachments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLPOAttachmentList'
+          description: ''
+    post:
+      operationId: lpo_attachments_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lpo.
+        required: true
+      tags:
+      - Procurement / LPO Attachments
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                kind:
+                  type: string
+                  enum:
+                  - quote
+                  - invoice
+                  - other
+              required:
+              - file
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LPOAttachment'
+          description: ''
+  /api/lpos/{id}/attachments/{att_id}/:
+    delete:
+      operationId: lpo_delete_attachment
+      parameters:
+      - in: path
+        name: att_id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lpo.
+        required: true
+      tags:
+      - Procurement / LPO
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/lpos/{id}/cancel/:
+    post:
+      operationId: lpo_cancel
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lpo.
+        required: true
+      tags:
+      - Procurement / LPO
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/lpos/{id}/pdf/:
+    get:
+      operationId: lpo_pdf
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lpo.
+        required: true
+      tags:
+      - Procurement / LPO
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/lpos/{id}/submit/:
+    post:
+      operationId: lpo_submit
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lpo.
+        required: true
+      tags:
+      - Procurement / LPO
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LPORequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/schema/:
     get:
       operationId: schema_retrieve
@@ -594,6 +1367,158 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/suppliers/:
+    get:
+      operationId: supplier_list
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - Procurement / Suppliers
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSupplierList'
+          description: ''
+    post:
+      operationId: supplier_create
+      tags:
+      - Procurement / Suppliers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SupplierRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupplierRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+          description: ''
+  /api/suppliers/{id}/:
+    get:
+      operationId: supplier_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this supplier.
+        required: true
+      tags:
+      - Procurement / Suppliers
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+          description: ''
+    put:
+      operationId: supplier_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this supplier.
+        required: true
+      tags:
+      - Procurement / Suppliers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SupplierRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupplierRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+          description: ''
+    patch:
+      operationId: supplier_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this supplier.
+        required: true
+      tags:
+      - Procurement / Suppliers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSupplierRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSupplierRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSupplierRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+          description: ''
+    delete:
+      operationId: supplier_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this supplier.
+        required: true
+      tags:
+      - Procurement / Suppliers
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/users/:
     get:
       operationId: users_list
@@ -900,6 +1825,139 @@ components:
       required:
       - current_password
       - new_password
+    GRNItemIn:
+      type: object
+      properties:
+        lpo_item:
+          type: integer
+        qty_received:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+      required:
+      - lpo_item
+      - qty_received
+    GRNItemInRequest:
+      type: object
+      properties:
+        lpo_item:
+          type: integer
+        qty_received:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+      required:
+      - lpo_item
+      - qty_received
+    GoodsReceipt:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        lpo:
+          type: integer
+        received_by:
+          type: integer
+          readOnly: true
+        received_at:
+          type: string
+          format: date-time
+          readOnly: true
+        reference:
+          type: string
+          maxLength: 64
+        note:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GRNItemIn'
+      required:
+      - id
+      - items
+      - lpo
+      - received_at
+      - received_by
+    GoodsReceiptRequest:
+      type: object
+      properties:
+        lpo:
+          type: integer
+        reference:
+          type: string
+          maxLength: 64
+        note:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GRNItemInRequest'
+      required:
+      - items
+      - lpo
+    InventoryAttachment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        entry:
+          type: string
+          format: uuid
+        file:
+          type: string
+          format: uri
+        kind:
+          $ref: '#/components/schemas/InventoryAttachmentKindEnum'
+        mime_type:
+          type: string
+          readOnly: true
+        size_kb:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,1})?$
+          readOnly: true
+        width:
+          type: integer
+          readOnly: true
+          nullable: true
+        height:
+          type: integer
+          readOnly: true
+          nullable: true
+        checksum:
+          type: string
+          readOnly: true
+        uploaded_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        uploaded_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - checksum
+      - entry
+      - file
+      - height
+      - id
+      - mime_type
+      - size_kb
+      - uploaded_at
+      - uploaded_by
+      - width
+    InventoryAttachmentKindEnum:
+      enum:
+      - photo
+      - spec
+      - other
+      type: string
+      description: |-
+        * `photo` - Photo
+        * `spec` - Spec
+        * `other` - Other
     InventoryEntry:
       type: object
       properties:
@@ -929,7 +1987,7 @@ components:
           type: string
           maxLength: 80
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/InventoryEntryStatusEnum'
         driver_name:
           type: string
           nullable: true
@@ -1042,7 +2100,7 @@ components:
           minLength: 1
           maxLength: 80
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/InventoryEntryStatusEnum'
         driver_name:
           type: string
           nullable: true
@@ -1105,6 +2163,261 @@ components:
       required:
       - date
       - truck_registration
+    InventoryEntryStatusEnum:
+      enum:
+      - pending
+      - in_transit
+      - delivered
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `in_transit` - In Transit
+        * `delivered` - Delivered
+        * `rejected` - Rejected
+    LPO:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        supplier:
+          type: integer
+        lpo_number:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/LPOStatusEnum'
+          readOnly: true
+        currency:
+          type: string
+          maxLength: 8
+        delivery_address:
+          type: string
+        expected_delivery_date:
+          type: string
+          format: date
+          nullable: true
+        payment_terms:
+          type: string
+          maxLength: 255
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          readOnly: true
+        tax_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        discount_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        grand_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+        approved_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        submitted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        approved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LPOItem'
+      required:
+      - approved_at
+      - approved_by
+      - created_at
+      - created_by
+      - grand_total
+      - id
+      - items
+      - lpo_number
+      - status
+      - submitted_at
+      - subtotal
+      - supplier
+      - updated_at
+    LPOAttachment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        lpo:
+          type: integer
+        file:
+          type: string
+          format: uri
+        kind:
+          $ref: '#/components/schemas/LPOAttachmentKindEnum'
+        mime_type:
+          type: string
+          readOnly: true
+        size_kb:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,1})?$
+          readOnly: true
+        width:
+          type: integer
+          readOnly: true
+          nullable: true
+        height:
+          type: integer
+          readOnly: true
+          nullable: true
+        checksum:
+          type: string
+          readOnly: true
+        uploaded_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - checksum
+      - file
+      - height
+      - id
+      - lpo
+      - mime_type
+      - size_kb
+      - uploaded_at
+      - width
+    LPOAttachmentKindEnum:
+      enum:
+      - quotation
+      - spec
+      - other
+      type: string
+      description: |-
+        * `quotation` - Quotation
+        * `spec` - Spec
+        * `other` - Other
+    LPOItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        inventory_item:
+          type: string
+          format: uuid
+        description:
+          type: string
+        qty:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        line_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          readOnly: true
+      required:
+      - id
+      - inventory_item
+      - line_total
+      - qty
+      - unit_price
+    LPOItemRequest:
+      type: object
+      properties:
+        inventory_item:
+          type: string
+          format: uuid
+        description:
+          type: string
+        qty:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+      required:
+      - inventory_item
+      - qty
+      - unit_price
+    LPORequest:
+      type: object
+      properties:
+        supplier:
+          type: integer
+        currency:
+          type: string
+          minLength: 1
+          maxLength: 8
+        delivery_address:
+          type: string
+        expected_delivery_date:
+          type: string
+          format: date
+          nullable: true
+        payment_terms:
+          type: string
+          maxLength: 255
+        tax_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        discount_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LPOItemRequest'
+      required:
+      - items
+      - supplier
+    LPOStatusEnum:
+      enum:
+      - draft
+      - submitted
+      - approved
+      - partially_received
+      - fulfilled
+      - cancelled
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `submitted` - Submitted
+        * `approved` - Approved
+        * `partially_received` - Partially Received
+        * `fulfilled` - Fulfilled
+        * `cancelled` - Cancelled
     Me:
       type: object
       description: Read-only representation of the current user.
@@ -1172,6 +2485,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AuditLog'
+    PaginatedGoodsReceiptList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/GoodsReceipt'
+    PaginatedInventoryAttachmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryAttachment'
     PaginatedInventoryEntryList:
       type: object
       required:
@@ -1195,6 +2554,75 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/InventoryEntry'
+    PaginatedLPOAttachmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LPOAttachment'
+    PaginatedLPOList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LPO'
+    PaginatedSupplierList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Supplier'
     PaginatedUserBaseList:
       type: object
       required:
@@ -1218,6 +2646,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/UserBase'
+    PatchedGoodsReceiptRequest:
+      type: object
+      properties:
+        lpo:
+          type: integer
+        reference:
+          type: string
+          maxLength: 64
+        note:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GRNItemInRequest'
     PatchedInventoryEntryRequest:
       type: object
       properties:
@@ -1244,7 +2686,7 @@ components:
           minLength: 1
           maxLength: 80
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/InventoryEntryStatusEnum'
         driver_name:
           type: string
           nullable: true
@@ -1304,6 +2746,63 @@ components:
         comment:
           type: string
           nullable: true
+    PatchedLPORequest:
+      type: object
+      properties:
+        supplier:
+          type: integer
+        currency:
+          type: string
+          minLength: 1
+          maxLength: 8
+        delivery_address:
+          type: string
+        expected_delivery_date:
+          type: string
+          format: date
+          nullable: true
+        payment_terms:
+          type: string
+          maxLength: 255
+        tax_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        discount_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LPOItemRequest'
+    PatchedSupplierRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 64
+        address:
+          type: string
+        rc_number:
+          type: string
+          maxLength: 64
+        tax_id:
+          type: string
+          maxLength: 64
+        contact_person:
+          type: string
+          maxLength: 128
+        is_active:
+          type: boolean
     PatchedUserUpdateRequest:
       type: object
       properties:
@@ -1354,18 +2853,71 @@ components:
           minLength: 6
       required:
       - password
-    StatusEnum:
-      enum:
-      - pending
-      - in_transit
-      - delivered
-      - rejected
-      type: string
-      description: |-
-        * `pending` - Pending
-        * `in_transit` - In Transit
-        * `delivered` - Delivered
-        * `rejected` - Rejected
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        supplier_code:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 64
+        address:
+          type: string
+        rc_number:
+          type: string
+          maxLength: 64
+        tax_id:
+          type: string
+          maxLength: 64
+        contact_person:
+          type: string
+          maxLength: 128
+        is_active:
+          type: boolean
+      required:
+      - id
+      - name
+      - supplier_code
+    SupplierRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 64
+        address:
+          type: string
+        rc_number:
+          type: string
+          maxLength: 64
+        tax_id:
+          type: string
+          maxLength: 64
+        contact_person:
+          type: string
+          maxLength: 128
+        is_active:
+          type: boolean
+      required:
+      - name
     TokenObtainPair:
       type: object
       properties:

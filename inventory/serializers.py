@@ -1,6 +1,6 @@
 # inventory/serializers.py
 from rest_framework import serializers
-from .models import InventoryEntry, AuditLog
+from .models import InventoryAttachment, InventoryEntry, AuditLog
 
 class InventoryEntrySerializer(serializers.ModelSerializer):
     class Meta:
@@ -31,7 +31,13 @@ class InventoryEntrySerializer(serializers.ModelSerializer):
             if v is not None and v < 0:
                 raise serializers.ValidationError({f: "Must be ≥ 0"})
         return attrs
-    
+
+class InventoryAttachmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InventoryAttachment
+        fields = ["id", "entry", "file", "kind", "mime_type", "size_kb", "width", "height", "checksum", "uploaded_by", "uploaded_at"]
+        read_only_fields = ["id", "mime_type", "size_kb", "width", "height", "checksum", "uploaded_by", "uploaded_at"]
+        
 class AuditLogSerializer(serializers.ModelSerializer):
     entry_id = serializers.UUIDField(read_only=True) 
     user_username = serializers.CharField(source="user.username", read_only=True)

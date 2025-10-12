@@ -1,0 +1,220 @@
+################################################################################
+# GLOBAL / OS / EDITORS
+################################################################################
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Editors / IDE
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Optional: keep VSCode workspace settings tracked
+# !.vscode/settings.json
+
+
+################################################################################
+# PYTHON / DJANGO (Backend)
+################################################################################
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.conda/
+.python-version
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+pip-log.txt
+
+# Django: local DBs
+db.sqlite3
+*.sqlite3
+*.db
+
+# Django: collected static & media (generated)
+staticfiles/
+static_root/
+media/
+# keep placeholder if you use one:
+!media/.gitkeep
+
+# Logs & runtime
+*.log
+*.tmp
+*.pid
+*.seed
+*.out
+*.err
+logs/
+security.log
+audit.log
+
+# Test & coverage output
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.pytest_cache/
+.cache/
+nosetests.xml
+coverage.xml
+junit*.xml
+test-results/
+
+# Type checking / linters
+.mypy_cache/
+.dmypy.json
+.pyre/
+.pytype/
+.pyrightcache/
+ruff_cache/
+
+# Local settings overrides (if you use them)
+settings_local.py
+local_settings.py
+
+# Migrations cache (TRACK your actual migration files!)
+# (Do NOT ignore: */migrations/*.py)
+# Safe to ignore migration pyc caches:
+*/migrations/__pycache__/
+
+
+################################################################################
+# NODE / NEXT.JS (Frontend)
+################################################################################
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js build artifacts
+.next/
+out/
+# Vercel / hosting
+.vercel/
+# Turborepo / build cache
+.turbo/
+turbo/
+
+# Package manager artifacts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+# If you prefer locking deps, comment the above out and commit the chosen lockfile
+
+# Transpiled / build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Linters & tooling
+.eslintcache
+.stylelintcache
+
+
+################################################################################
+# MONOREPO: OPTIONAL PER-PACKAGE IGNORES
+################################################################################
+# If you split code into /backend and /frontend, these keep it tidy:
+# backend/
+backend/node_modules/
+backend/.next/
+backend/out/
+backend/.venv/
+
+# frontend/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+
+
+################################################################################
+# ENV / SECRETS (both Python & Node)
+################################################################################
+# General env files
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Next.js env patterns
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Docker / Compose env (if used)
+.env.docker
+.env.compose
+
+
+################################################################################
+# DOCKER / CONTAINERS (if used)
+################################################################################
+# Docker artifacts
+docker-data/
+.tmp/
+.docker/
+compose.override.yaml
+docker-compose.override.yml
+
+
+################################################################################
+# ASSET PIPELINES / GENERATED ARTIFACTS
+################################################################################
+# Compiled assets, caches, temporary exports
+public/tmp/
+tmp/
+temp/
+
+# Image optimization caches
+.next/cache/
+**/.cache/
+
+
+################################################################################
+# OPENAPI / CODEGEN (adjust to your workflow)
+################################################################################
+# If you auto-generate clients from OpenAPI, ignore generated code here.
+# Keep openapi.yaml tracked unless you truly want it ephemeral.
+# openapi/
+# openapi_client/
+# api-client/
+
+
+################################################################################
+# MISC
+################################################################################
+# Coverage config caches
+*.coverage
+*.cov
+
+# Python wheels / temporary
+*.whl
+
+# Local scripts / scratch files
+scratch/
+notes/
+*.bak
+*.orig
+*.rej

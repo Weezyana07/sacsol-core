@@ -87,6 +87,26 @@ class InventoryEntry(models.Model):
         self.deleted = True
         self.save()
 
+class InventoryAttachment(models.Model):
+    KIND_CHOICES = [("photo", "Photo"), ("spec", "Spec"), ("other", "Other")]
+
+    entry = models.ForeignKey(InventoryEntry, on_delete=models.CASCADE, related_name="attachments")
+    file = models.FileField(upload_to="inventory/attachments/%Y/%m/")
+    kind = models.CharField(max_length=32, choices=KIND_CHOICES, default="photo")
+    mime_type = models.CharField(max_length=64, blank=True)
+    size_kb = models.DecimalField(max_digits=10, decimal_places=1, default=0)
+    width = models.PositiveIntegerField(null=True, blank=True)
+    height = models.PositiveIntegerField(null=True, blank=True)
+    checksum = models.CharField(max_length=32, blank=True)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["entry"]),
+            models.Index(fields=["checksum"]),
+        ]
+        
 class AuditLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     entry = models.ForeignKey(InventoryEntry, on_delete=models.CASCADE, related_name='audit_logs')

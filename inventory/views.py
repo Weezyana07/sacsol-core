@@ -1,4 +1,5 @@
 # inventory/views.py
+from __future__ import annotations
 import io, csv
 import pandas as pd
 from decimal import Decimal
@@ -17,9 +18,18 @@ from .models import InventoryEntry, AuditLog
 from .permissions import ReadOnlyOrSuperAdmin
 from .filters import apply_inventory_filters
 
-from .serializers import InventoryEntrySerializer, AuditLogSerializer
+from .serializers import InventoryAttachmentSerializer, InventoryEntrySerializer, AuditLogSerializer
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 import datetime, uuid
+
+from io import BytesIO
+import hashlib
+from PIL import Image, UnidentifiedImageError, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+from django.conf import settings
+from django.core.files.base import ContentFile
+from .models import InventoryEntry, InventoryAttachment
 
 def _json_safe(v):
     if isinstance(v, (datetime.date, datetime.datetime, uuid.UUID)):
@@ -55,7 +65,9 @@ class InventoryViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         qs = super().get_queryset()
-        return apply_inventory_filters(qs, self.request.query_params)
+        # spectacular may call without a real request
+        qparams = getattr(self.request, "query_params", {}) or {}
+        return apply_inventory_filters(qs, qparams)
 
     # ---- audit logging centralized here ----
     def perform_create(self, serializer):
@@ -380,3 +392,122 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(action=action)
 
         return qs
+    
+class InventoryEntryViewSet(viewsets.ModelViewSet):
+    queryset = InventoryEntry.objects.all()
+    serializer_class = InventoryEntrySerializer       
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(                                       
+        methods=['get'],
+        tags=["Inventory / Attachments"],
+        operation_id="inventory_entry_attachments_list",
+        responses=InventoryAttachmentSerializer(many=True),
+    )
+    @extend_schema(                                     
+        methods=['post'],
+        tags=["Inventory / Attachments"],
+        operation_id="inventory_entry_attachments_create",
+        request={"multipart/form-data": {
+            "type": "object",
+            "properties": {
+                "file": {"type": "string", "format": "binary"},
+                "kind": {"type": "string", "enum": ["photo", "spec", "other"]},
+            },
+            "required": ["file"],
+        }},
+        responses={201: InventoryAttachmentSerializer},
+    )
+    @action(detail=True, methods=["get", "post"], url_path="attachments")
+    def attachments(self, request, pk=None):
+
+        entry = self.get_object()
+
+        # GET → list
+        if request.method == "GET":
+            qs = entry.attachments.all().order_by("-uploaded_at")
+            return Response(InventoryAttachmentSerializer(qs, many=True).data)
+
+        # POST → upload (images strongly preferred)
+        f = request.FILES.get("file")
+        kind = request.data.get("kind", "photo")
+        if not f:
+            return Response({"detail": "No file"}, status=400)
+
+        allowed = set(getattr(settings, "ALLOWED_ATTACHMENT_CONTENT_TYPES", [])) or {
+            "image/jpeg", "image/png", "image/webp", "application/pdf"
+        }
+        ctype = (getattr(f, "content_type", "") or "").lower()
+        if ctype not in allowed:
+            return Response({"detail": "Unsupported file type."}, status=400)
+
+        # IMAGES → canonicalize to JPEG
+        if ctype.startswith("image/"):
+            try:
+                img = Image.open(f); img.verify(); f.seek(0)
+                img = Image.open(f).convert("RGB")
+
+                MAX_DIM = int(getattr(settings, "IMAGE_MAX_DIM", 2000))
+                img.thumbnail((MAX_DIM, MAX_DIM))
+
+                buf = BytesIO()
+                img.save(buf, format="JPEG", quality=80, optimize=True)
+                data = buf.getvalue()
+
+                # Optional hard cap
+                MAX_IMG_KB = int(getattr(settings, "MAX_IMAGE_UPLOAD_KB", 300))
+                size_kb = round(len(data) / 1024, 1)
+                if size_kb > MAX_IMG_KB:
+                    return Response({"detail": f"Image too large after compression ({size_kb}KB > {MAX_IMG_KB}KB)."}, status=400)
+
+                checksum = hashlib.md5(data).hexdigest()
+                existing = InventoryAttachment.objects.filter(entry=entry, checksum=checksum).first()
+                if existing:
+                    return Response(InventoryAttachmentSerializer(existing).data, status=200)
+
+                safe_name = (getattr(f, "name", "upload") or "upload").rsplit(".", 1)[0] + ".jpg"
+                content = ContentFile(data, name=safe_name)
+
+                att = InventoryAttachment.objects.create(
+                    entry=entry, file=content, kind=kind, mime_type="image/jpeg",
+                    size_kb=size_kb, width=img.width, height=img.height,
+                    checksum=checksum, uploaded_by=request.user,
+                )
+                return Response(InventoryAttachmentSerializer(att).data, status=201)
+
+            except UnidentifiedImageError:
+                return Response({"detail": "Invalid image file."}, status=400)
+            except Image.DecompressionBombError:
+                return Response({"detail": "Image too large / unsafe to process."}, status=400)
+
+        # PDF (e.g., spec sheets)
+        if ctype == "application/pdf":
+            max_mb = int(getattr(settings, "MAX_PDF_UPLOAD_MB", 5))
+            size = getattr(f, "size", None)
+            if size and size > max_mb * 1024 * 1024:
+                return Response({"detail": f"PDF too large (max {max_mb}MB)."}, status=400)
+            raw = f.read(); f.seek(0)
+            checksum = hashlib.md5(raw).hexdigest()
+            existing = InventoryAttachment.objects.filter(entry=entry, checksum=checksum).first()
+            if existing:
+                return Response(InventoryAttachmentSerializer(existing).data, status=200)
+
+            att = InventoryAttachment.objects.create(
+                entry=entry, file=f, kind=kind, mime_type="application/pdf",
+                size_kb=round((size or len(raw))/1024, 1),
+                checksum=checksum, uploaded_by=request.user,
+            )
+            return Response(InventoryAttachmentSerializer(att).data, status=201)
+
+        return Response({"detail": "Unsupported file type."}, status=400)
+
+    @extend_schema(tags=["Inventory / Attachments"], operation_id="inventory_entry_delete_attachment")
+    @action(detail=True, methods=["delete"], url_path=r"attachments/(?P<att_id>\d+)")
+    def delete_attachment(self, request, pk=None, att_id=None):
+        entry = self.get_object()
+        att = entry.attachments.filter(id=att_id).first()
+        if not att:
+            return Response({"detail": "Not found."}, status=404)
+        # Add your permission rule if needed (e.g., only managers delete)
+        att.delete()
+        return Response(status=204)
