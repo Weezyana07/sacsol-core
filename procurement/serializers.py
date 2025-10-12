@@ -1,9 +1,10 @@
-# procurement/serializer.py
+# procurement/serializers.py
 from __future__ import annotations
 from decimal import Decimal
 
 from rest_framework import serializers
 
+from inventory.models import InventoryEntry
 from .models import (
     AuditLog, Supplier, LPO, LPOItem, LPOAttachment,
     GoodsReceipt, GoodsReceiptItem,
@@ -55,6 +56,12 @@ class SupplierSerializer(serializers.ModelSerializer):
 # LPO Items
 # =========================
 class LPOItemSerializer(serializers.ModelSerializer):
+    # Make FK optional; allow empty string -> None
+    inventory_item = serializers.PrimaryKeyRelatedField(
+        queryset=InventoryEntry.objects.all(),
+        required=False,
+        allow_null=True,
+    )
     description = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
@@ -62,17 +69,44 @@ class LPOItemSerializer(serializers.ModelSerializer):
         fields = ["id", "inventory_item", "description", "qty", "unit_price", "line_total"]
         read_only_fields = ["id", "line_total"]
 
+    def to_internal_value(self, data):
+        d = dict(data)
+        if d.get("inventory_item") in ("", None):
+            d["inventory_item"] = None
+        return super().to_internal_value(d)
+
+    def validate(self, attrs):
+        inv = attrs.get("inventory_item")
+        desc = (attrs.get("description") or "").strip()
+        if not inv and not desc:
+            raise serializers.ValidationError("Provide either inventory_item or description.")
+        if inv and not desc:
+            # default description from inventory when omitted
+            desc = getattr(inv, "description", "") or getattr(inv, "mineral_or_equipment", "") or ""
+            attrs["description"] = desc
+        return attrs
+
 
 # =========================
 # LPO (header)
 # =========================
 class LPOSerializer(serializers.ModelSerializer):
+    # Make supplier optional so we can accept supplier_name
+    supplier = serializers.PrimaryKeyRelatedField(
+        queryset=Supplier.objects.all(),
+        required=False,
+        allow_null=True,
+    )
     items = LPOItemSerializer(many=True)
+    # allow typing the supplier name; we resolve/create in create/update
+    supplier_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    supplier_name_display = serializers.CharField(source="supplier.name", read_only=True)
 
     class Meta:
         model = LPO
         fields = [
-            "id", "supplier", "lpo_number", "status",
+            "id", "supplier", "supplier_name", "supplier_name_display",
+            "lpo_number", "status",
             "currency", "delivery_address", "expected_delivery_date", "payment_terms",
             "subtotal", "tax_amount", "discount_amount", "grand_total",
             "created_by", "approved_by", "created_at", "updated_at", "submitted_at", "approved_at",
@@ -81,6 +115,7 @@ class LPOSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id", "lpo_number", "status", "subtotal", "grand_total",
             "approved_by", "created_at", "updated_at", "submitted_at", "approved_at", "created_by",
+            "supplier_name_display",
         ]
 
     # --- validations ---
@@ -103,16 +138,51 @@ class LPOSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"discount_amount": "Discount amount cannot be negative."})
         return attrs
 
+    # --- helpers ---
+    def _ensure_supplier(self, data: dict) -> None:
+        """
+        Resolve supplier via one of:
+          - explicit supplier id/instance in payload, or
+          - supplier_name (case-insensitive match by name, otherwise create).
+        Mutates `data` to set `supplier` to a **Supplier instance** and removes `supplier_name`.
+        """
+        supplied = data.get("supplier")
+        if supplied:
+            # DRF typically gives an instance here, but normalize if an int slips through
+            if isinstance(supplied, int):
+                try:
+                    supplied = Supplier.objects.get(pk=supplied)
+                except Supplier.DoesNotExist:
+                    raise serializers.ValidationError({"supplier": "Supplier id does not exist."})
+            data["supplier"] = supplied
+            data.pop("supplier_name", None)
+            return
+
+        name = (data.pop("supplier_name", "") or "").strip()
+        if not name:
+            raise serializers.ValidationError({"supplier": "Supplier is required (id or supplier_name)."})
+
+        obj = Supplier.objects.filter(name__iexact=name).first()
+        if not obj:
+            obj = Supplier(name=name, supplier_code=next_supplier_code(), is_active=True)
+            obj.save()
+        # IMPORTANT: assign the instance (not pk)
+        data["supplier"] = obj
+
     # --- persistence ---
     def create(self, validated):
+        self._ensure_supplier(validated)
+
         items_data = validated.pop("items", [])
         user = self.context["request"].user
         validated["created_by"] = user
         if not validated.get("lpo_number"):
             validated["lpo_number"] = next_lpo_number()
+
         lpo = LPO.objects.create(**validated)
         for i in items_data:
             LPOItem.objects.create(lpo=lpo, **i)
+
         lpo.recompute_totals()
         lpo.save(update_fields=["subtotal", "grand_total"])
         return lpo
@@ -120,6 +190,11 @@ class LPOSerializer(serializers.ModelSerializer):
     def update(self, instance, validated):
         if not instance.is_editable:
             raise serializers.ValidationError("LPO is no longer editable.")
+
+        # allow changing supplier via id or supplier_name
+        if "supplier" in validated or "supplier_name" in validated:
+            self._ensure_supplier(validated)
+
         items_data = validated.pop("items", None)
 
         for k, v in validated.items():
@@ -157,6 +232,7 @@ class GRNItemIn(serializers.Serializer):
         if Decimal(v) <= 0:
             raise serializers.ValidationError("qty_received must be > 0.")
         return v
+
 
 class GoodsReceiptSerializer(serializers.ModelSerializer):
     items = GRNItemIn(many=True)

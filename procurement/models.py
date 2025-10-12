@@ -138,8 +138,12 @@ class LPO(models.Model):
 
 class LPOItem(models.Model):
     lpo = models.ForeignKey(LPO, on_delete=models.CASCADE, related_name="items")
-    # keep your InventoryEntry link
-    inventory_item = models.ForeignKey("inventory.InventoryEntry", on_delete=models.PROTECT, related_name="lpo_items")
+    inventory_item = models.ForeignKey(
+        "inventory.InventoryEntry",
+        on_delete=models.PROTECT,
+        null=True, blank=True,   # <-- make optional
+        related_name="lpo_items",
+    )
     description = models.CharField(max_length=255, blank=True)
     qty = models.DecimalField(max_digits=14, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))])
     unit_price = models.DecimalField(max_digits=14, decimal_places=2, validators=[MinValueValidator(Decimal("0.00"))])

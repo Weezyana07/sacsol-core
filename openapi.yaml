@@ -2183,6 +2183,10 @@ components:
           readOnly: true
         supplier:
           type: integer
+          nullable: true
+        supplier_name_display:
+          type: string
+          readOnly: true
         lpo_number:
           type: string
           readOnly: true
@@ -2261,7 +2265,7 @@ components:
       - status
       - submitted_at
       - subtotal
-      - supplier
+      - supplier_name_display
       - updated_at
     LPOAttachment:
       type: object
@@ -2328,6 +2332,7 @@ components:
         inventory_item:
           type: string
           format: uuid
+          nullable: true
         description:
           type: string
         qty:
@@ -2345,7 +2350,6 @@ components:
           readOnly: true
       required:
       - id
-      - inventory_item
       - line_total
       - qty
       - unit_price
@@ -2355,6 +2359,7 @@ components:
         inventory_item:
           type: string
           format: uuid
+          nullable: true
         description:
           type: string
         qty:
@@ -2366,7 +2371,6 @@ components:
           format: decimal
           pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
       required:
-      - inventory_item
       - qty
       - unit_price
     LPORequest:
@@ -2374,6 +2378,10 @@ components:
       properties:
         supplier:
           type: integer
+          nullable: true
+        supplier_name:
+          type: string
+          writeOnly: true
         currency:
           type: string
           minLength: 1
@@ -2401,7 +2409,6 @@ components:
             $ref: '#/components/schemas/LPOItemRequest'
       required:
       - items
-      - supplier
     LPOStatusEnum:
       enum:
       - draft
@@ -2751,6 +2758,10 @@ components:
       properties:
         supplier:
           type: integer
+          nullable: true
+        supplier_name:
+          type: string
+          writeOnly: true
         currency:
           type: string
           minLength: 1
