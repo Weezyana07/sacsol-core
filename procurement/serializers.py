@@ -9,8 +9,6 @@ from .models import (
     AuditLog, Supplier, LPO, LPOItem, LPOAttachment,
     GoodsReceipt, GoodsReceiptItem,
 )
-from .services import next_lpo_number, next_supplier_code
-
 
 # =========================
 # Supplier
@@ -48,6 +46,7 @@ class SupplierSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        from .services import next_supplier_code
         validated_data["supplier_code"] = next_supplier_code()
         return super().create(validated_data)
 
@@ -140,6 +139,7 @@ class LPOSerializer(serializers.ModelSerializer):
 
     # --- helpers ---
     def _ensure_supplier(self, data: dict) -> None:
+        
         """
         Resolve supplier via one of:
           - explicit supplier id/instance in payload, or
@@ -161,9 +161,10 @@ class LPOSerializer(serializers.ModelSerializer):
         name = (data.pop("supplier_name", "") or "").strip()
         if not name:
             raise serializers.ValidationError({"supplier": "Supplier is required (id or supplier_name)."})
-
+        
         obj = Supplier.objects.filter(name__iexact=name).first()
         if not obj:
+            from .services import next_supplier_code
             obj = Supplier(name=name, supplier_code=next_supplier_code(), is_active=True)
             obj.save()
         # IMPORTANT: assign the instance (not pk)
@@ -177,6 +178,7 @@ class LPOSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         validated["created_by"] = user
         if not validated.get("lpo_number"):
+            from .services import next_lpo_number
             validated["lpo_number"] = next_lpo_number()
 
         lpo = LPO.objects.create(**validated)

@@ -33,6 +33,19 @@ DEBUG = os.getenv('DEBUG', 'true').lower() == 'true'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS','*').split(',')
 
 
+COMPANY_NAME = os.getenv("COMPANY_NAME", "SACSOL ENGINEERING LIMITED")
+COMPANY_ADDRESS = os.getenv("COMPANY_ADDRESS", "Plot 12, Industrial Layout|Lagos, Nigeria").split("|")
+COMPANY_PHONE = os.getenv("COMPANY_PHONE", "+234 800 000 0000")
+COMPANY_EMAIL = os.getenv("COMPANY_EMAIL", "info@sacsol.com")
+COMPANY_RC_NUMBER = os.getenv("COMPANY_RC_NUMBER", "RC 1234567")
+COMPANY_TAX_ID = os.getenv("COMPANY_TAX_ID", "TIN 0123456789")
+COMPANY_LOGO_PATH = Path(
+    os.getenv("COMPANY_LOGO_PATH", BASE_DIR / "core" / "static" / "sacsol.png")
+)
+SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
+SACSOL_LPO_PREFIX = os.getenv("SACSOL_LPO_PREFIX", "LPO")
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -202,3 +215,5 @@ ALLOWED_ATTACHMENT_CONTENT_TYPES = os.getenv(
     "ALLOWED_ATTACHMENT_CONTENT_TYPES",
     "image/jpeg,image/png,image/webp,application/pdf"
 ).split(",")
+
+

@@ -13,6 +13,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiType
 
 from io import BytesIO
 import hashlib
+from rest_framework import renderers
 
 from PIL import Image, UnidentifiedImageError, ImageFile  # requires Pillow
 ImageFile.LOAD_TRUNCATED_IMAGES = True  # tolerate truncated streams safely
@@ -26,6 +27,13 @@ from .serializers import (
 from .services import render_lpo_pdf_bytes
 from rest_framework.exceptions import ValidationError
 
+class PDFRenderer(renderers.BaseRenderer):
+    media_type = "application/pdf"
+    format = "pdf"
+    charset = None  # binary
+    render_style = "binary"
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return data
 
 def _ensure_lpo_can_receive(lpo):
     allowed = {
@@ -274,19 +282,17 @@ class LPOViewSet(viewsets.ModelViewSet):
     
         return Response({"detail": "Unsupported file type."}, status=400)
     
-    @extend_schema(
-        tags=["Procurement / LPO"],
-        operation_id="lpo_pdf",
-        responses={(200, "application/pdf"): OpenApiTypes.BINARY},
-    )
-    @action(detail=True, methods=["get"])
+    @extend_schema(tags=["Procurement / LPO"], operation_id="lpo_pdf",
+                   responses={(200, "application/pdf"): OpenApiTypes.BINARY})
+    @action(detail=True, methods=["get"], renderer_classes=[PDFRenderer], url_path="pdf")
     def pdf(self, request, pk=None):
         lpo = self.get_object()
         data = render_lpo_pdf_bytes(lpo)
-        resp = HttpResponse(data, content_type="application/pdf")
+        resp = Response(data, content_type="application/pdf")
+        # force preview in-browser, but still give a nice filename
         resp["Content-Disposition"] = f'inline; filename="{lpo.lpo_number}.pdf"'
         return resp
-
+    
     @extend_schema(tags=["Procurement / LPO"], operation_id="lpo_delete_attachment")
     @action(detail=True, methods=["delete"], url_path=r"attachments/(?P<att_id>\d+)")
     def delete_attachment(self, request, pk=None, att_id=None):
