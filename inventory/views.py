@@ -14,8 +14,8 @@ from rest_framework.exceptions import PermissionDenied
 
 from accounts.permissions import IsSuperAdmin
 
-from .models import InventoryEntry, AuditLog
-from .permissions import ReadOnlyOrSuperAdmin
+from .models import InventoryEntry, AuditLog, InventoryAttachment
+from .permissions import InventoryWritePolicy
 from .filters import apply_inventory_filters
 
 from .serializers import InventoryAttachmentSerializer, InventoryEntrySerializer, AuditLogSerializer
@@ -29,7 +29,6 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from django.conf import settings
 from django.core.files.base import ContentFile
-from .models import InventoryEntry, InventoryAttachment
 
 def _json_safe(v):
     if isinstance(v, (datetime.date, datetime.datetime, uuid.UUID)):
@@ -55,7 +54,7 @@ LIST_PARAMS = [
 class InventoryViewSet(viewsets.ModelViewSet):
     queryset = InventoryEntry.objects.filter(deleted=False)
     serializer_class = InventoryEntrySerializer
-    permission_classes = [ ReadOnlyOrSuperAdmin]  
+    permission_classes = [ InventoryWritePolicy]  
     parser_classes = (JSONParser, MultiPartParser, FormParser)
 
     def get_permissions(self):
@@ -71,56 +70,46 @@ class InventoryViewSet(viewsets.ModelViewSet):
 
     # ---- audit logging centralized here ----
     def perform_create(self, serializer):
-        if not self.request.user.is_superuser:
-            raise PermissionDenied("Only superadmin can create inventory.")
+        # permissions already checked
         obj = serializer.save(created_by=self.request.user)
         AuditLog.objects.create(entry=obj, user=self.request.user,
                                 action="create", changes=_json_safe(serializer.validated_data))
 
     def perform_update(self, serializer):
-        if not self.request.user.is_superuser:
-            raise PermissionDenied("Only superadmin can update inventory.")
+        # Only superuser passes permission, so no extra check needed
         instance = self.get_object()
         before = {f: getattr(instance, f) for f in serializer.validated_data.keys()}
         obj = serializer.save(modified_by=self.request.user)
-        delta = {k: {"from": before.get(k), "to": v} for k, v in serializer.validated_data.items() if before.get(k) != v}
+        delta = {k: {"from": before.get(k), "to": v}
+                 for k, v in serializer.validated_data.items()
+                 if before.get(k) != v}
         if delta:
             AuditLog.objects.create(entry=obj, user=self.request.user,
                                     action="update", changes=_json_safe(delta))
 
-        if not self.request.user.is_superuser:
-            log.warning("BLOCKED %s by user=%s (superuser=%s, path=%s)",
-                        self.action,
-                        getattr(self.request.user, "username", None),
-                        getattr(self.request.user, "is_superuser", None),
-                        self.request.path)
-            raise PermissionDenied("Only superadmin can update inventory.")
-        
     def perform_destroy(self, instance):
-        if not self.request.user.is_superuser:
-            raise PermissionDenied("Only superadmin can delete inventory.")
         instance.soft_delete()
         AuditLog.objects.create(entry=instance, user=self.request.user, action="soft_delete")
 
-    def create(self, request, *args, **kwargs):
-        if not request.user.is_superuser:
-            raise PermissionDenied("Only superadmin can create inventory.")
-        return super().create(request, *args, **kwargs)
+    # def create(self, request, *args, **kwargs):
+    #     if not request.user.is_superuser:
+    #         raise PermissionDenied("Only superadmin can create inventory.")
+    #     return super().create(request, *args, **kwargs)
 
-    def update(self, request, *args, **kwargs):
-        if not request.user.is_superuser:
-            raise PermissionDenied("Only superadmin can update inventory.")
-        return super().update(request, *args, **kwargs)
+    # def update(self, request, *args, **kwargs):
+    #     if not request.user.is_superuser:
+    #         raise PermissionDenied("Only superadmin can update inventory.")
+    #     return super().update(request, *args, **kwargs)
 
-    def partial_update(self, request, *args, **kwargs):
-        if not request.user.is_superuser:
-            raise PermissionDenied("Only superadmin can update inventory.")
-        return super().partial_update(request, *args, **kwargs)
+    # def partial_update(self, request, *args, **kwargs):
+    #     if not request.user.is_superuser:
+    #         raise PermissionDenied("Only superadmin can update inventory.")
+    #     return super().partial_update(request, *args, **kwargs)
 
-    def destroy(self, request, *args, **kwargs):
-        if not request.user.is_superuser:
-            raise PermissionDenied("Only superadmin can delete inventory.")
-        return super().destroy(request, *args, **kwargs)
+    # def destroy(self, request, *args, **kwargs):
+    #     if not request.user.is_superuser:
+    #         raise PermissionDenied("Only superadmin can delete inventory.")
+    #     return super().destroy(request, *args, **kwargs)
     
     # ---- list (OpenAPI) ----
     @extend_schema(

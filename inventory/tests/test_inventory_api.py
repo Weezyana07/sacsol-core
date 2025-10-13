@@ -35,8 +35,11 @@ def auth_token(client: APIClient, username: str, password: str) -> str:
 
 @pytest.fixture()
 def staff_user(db):
-    return User.objects.create_user(username="staff", password="x")  # not in Manager group
-
+    from django.contrib.auth.models import User, Group
+    u = User.objects.create_user(username="staff", password="x")
+    g, _ = Group.objects.get_or_create(name="Staff")
+    u.groups.add(g)
+    return u
 
 @pytest.fixture()
 def manager_user(db, manager_group):
@@ -115,15 +118,15 @@ def test_empty_list_ok(auth_staff):
 # Create / Update / Permissions
 # -----------------------------
 
-def test_staff_cannot_create(auth_staff):
-    payload = {
-        "date": "2025-10-01",
-        "truck_registration": "abc123",
-        "quantity": "2.000",
-        "status": "pending",
-    }
-    res = auth_staff.post("/api/inventory/", payload, format="json")
-    assert res.status_code == 403
+# def test_staff_cannot_create(auth_staff):
+#     payload = {
+#         "date": "2025-10-01",
+#         "truck_registration": "abc123",
+#         "quantity": "2.000",
+#         "status": "pending",
+#     }
+#     res = auth_staff.post("/api/inventory/", payload, format="json")
+#     assert res.status_code == 403
 
 def test_owner_cannot_update_others_entry(auth_other, staff_user):
     entry = make_entry(created_by=staff_user, truck_registration="OWN123")
@@ -398,35 +401,40 @@ def test_empty_list_ok(auth_staff):
 
 # ===== Writes are blocked for staff/manager; allowed for superadmin =====
 
-def test_staff_cannot_create_update_delete(auth_staff, staff_user):
-    # create
-    payload = {"date": "2025-10-01", "truck_registration": "abc123", "quantity": "2.000", "status": "pending"}
+# def test_staff_cannot_create_update_delete(auth_staff, staff_user):
+#     # create
+#     payload = {"date": "2025-10-01", "truck_registration": "abc123", "quantity": "2.000", "status": "pending"}
+#     res = auth_staff.post("/api/inventory/", payload, format="json")
+#     assert res.status_code == 403
+
+#     # make an entry owned by staff (via ORM) just to try update/delete endpoints
+#     entry = make_entry(created_by=staff_user, truck_registration="OWN123")
+#     # update
+#     res_u = auth_staff.patch(f"/api/inventory/{entry.id}/", {"status": "delivered"}, format="json")
+#     assert res_u.status_code == 403
+#     # delete
+#     res_d = auth_staff.delete(f"/api/inventory/{entry.id}/")
+#     assert res_d.status_code == 403
+
+def test_staff_can_create_but_cannot_edit_delete(auth_staff):
+    payload = {"date":"2025-10-01","truck_registration":"abc123","quantity":"2.000","status":"pending"}
     res = auth_staff.post("/api/inventory/", payload, format="json")
-    assert res.status_code == 403
+    assert res.status_code == 201
+    entry_id = res.data["id"]
 
-    # make an entry owned by staff (via ORM) just to try update/delete endpoints
-    entry = make_entry(created_by=staff_user, truck_registration="OWN123")
-    # update
-    res_u = auth_staff.patch(f"/api/inventory/{entry.id}/", {"status": "delivered"}, format="json")
-    assert res_u.status_code == 403
-    # delete
-    res_d = auth_staff.delete(f"/api/inventory/{entry.id}/")
-    assert res_d.status_code == 403
+    assert auth_staff.patch(f"/api/inventory/{entry_id}/", {"status":"delivered"}, format="json").status_code == 403
+    assert auth_staff.delete(f"/api/inventory/{entry_id}/").status_code == 403
 
-def test_manager_cannot_create_update_delete(auth_manager, staff_user):
-    # create
-    payload = {"date": "2025-10-01", "truck_registration": "xyz999", "quantity": "1.0", "status": "pending"}
+def test_manager_can_create_but_cannot_edit_delete(auth_manager, staff_user):
+    # create allowed
+    payload = {"date":"2025-10-01","truck_registration":"xyz999","quantity":"1.0","status":"pending"}
     res = auth_manager.post("/api/inventory/", payload, format="json")
-    assert res.status_code == 403
+    assert res.status_code == 201
 
     entry = make_entry(created_by=staff_user, truck_registration="MGR123")
-    # update
-    res_u = auth_manager.patch(f"/api/inventory/{entry.id}/", {"status": "delivered"}, format="json")
-    assert res_u.status_code == 403
-    # delete
-    res_d = auth_manager.delete(f"/api/inventory/{entry.id}/")
-    assert res_d.status_code == 403
-
+    assert auth_manager.patch(f"/api/inventory/{entry.id}/", {"status":"delivered"}, format="json").status_code == 403
+    assert auth_manager.delete(f"/api/inventory/{entry.id}/").status_code == 403
+    
 def test_superadmin_can_create_update_delete(auth_superadmin):
     # create
     payload = {"date": "2025-10-01", "truck_registration": "ROOT1", "quantity": "3.000", "status": "pending"}
