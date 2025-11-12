@@ -3,22 +3,16 @@ info:
   title: Sacsol API
   version: 1.0.0
   description: Inventory management API for Sacsol
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
 paths:
   /api/audit-logs/:
     get:
       operationId: audit_logs_list
       description: Superadmin-only read-only listing of audit events.
+      summary: List audit logs
       parameters:
-      - in: query
-        name: action
-        schema:
-          type: string
-        description: Filter by action (create/update/soft_delete)
-      - in: query
-        name: entry
-        schema:
-          type: string
-        description: Filter by InventoryEntry ID (UUID)
       - name: limit
         required: false
         in: query
@@ -31,14 +25,10 @@ paths:
         description: The initial index from which to return the results.
         schema:
           type: integer
-      - in: query
-        name: user
-        schema:
-          type: string
-        description: Filter by username
       tags:
-      - Inventory
+      - audit-logs
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '200':
@@ -47,21 +37,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedAuditLogList'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/audit-logs/{id}/:
     get:
       operationId: audit_logs_retrieve
       description: Superadmin-only read-only listing of audit events.
+      summary: Get audit log
       parameters:
-      - in: query
-        name: action
-        schema:
-          type: string
-        description: Filter by action (create/update/soft_delete)
-      - in: query
-        name: entry
-        schema:
-          type: string
-        description: Filter by InventoryEntry ID (UUID)
       - in: path
         name: id
         schema:
@@ -69,14 +58,10 @@ paths:
           format: uuid
         description: A UUID string identifying this audit log.
         required: true
-      - in: query
-        name: user
-        schema:
-          type: string
-        description: Filter by username
       tags:
-      - Inventory
+      - audit-logs
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '200':
@@ -85,14 +70,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuditLog'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/auth/token/:
     post:
       operationId: auth_token_create
       description: |-
         Takes a set of user credentials and returns an access and refresh JSON web
         token pair to prove the authentication of those credentials.
+      summary: Obtain JWT access/refresh tokens
       tags:
-      - auth
+      - Auth
       requestBody:
         content:
           application/json:
@@ -110,16 +104,22 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenObtainPair'
+                type: object
+                additionalProperties: {}
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
   /api/auth/token/refresh/:
     post:
       operationId: auth_token_refresh_create
       description: |-
         Takes a refresh type JSON web token and returns an access type JSON web
         token if the refresh token is valid.
+      summary: Refresh JWT access token
       tags:
-      - auth
+      - Auth
       requestBody:
         content:
           application/json:
@@ -137,11 +137,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenRefresh'
+                type: object
+                additionalProperties: {}
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
   /api/grn/:
     get:
       operationId: grn_list
+      summary: List goods receipts
       parameters:
       - name: limit
         required: false
@@ -159,6 +165,7 @@ paths:
       - Procurement / GRN
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -166,8 +173,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedGoodsReceiptList'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     post:
       operationId: grn_create
+      summary: Create goods receipt
       tags:
       - Procurement / GRN
       requestBody:
@@ -183,6 +199,7 @@ paths:
               $ref: '#/components/schemas/GoodsReceiptRequest'
         required: true
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '201':
@@ -191,9 +208,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/GoodsReceipt'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/grn/{id}/:
     get:
       operationId: grn_retrieve
+      summary: Get goods receipt
       parameters:
       - in: path
         name: id
@@ -205,6 +231,7 @@ paths:
       - Procurement / GRN
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -212,8 +239,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/GoodsReceipt'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     put:
       operationId: grn_update
+      summary: Replace goods receipt
       parameters:
       - in: path
         name: id
@@ -222,7 +258,7 @@ paths:
         description: A unique integer value identifying this goods receipt.
         required: true
       tags:
-      - grn
+      - Procurement / GRN
       requestBody:
         content:
           application/json:
@@ -237,6 +273,7 @@ paths:
         required: true
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -244,8 +281,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/GoodsReceipt'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     patch:
       operationId: grn_partial_update
+      summary: Update goods receipt
       parameters:
       - in: path
         name: id
@@ -254,7 +300,7 @@ paths:
         description: A unique integer value identifying this goods receipt.
         required: true
       tags:
-      - grn
+      - Procurement / GRN
       requestBody:
         content:
           application/json:
@@ -268,6 +314,7 @@ paths:
               $ref: '#/components/schemas/PatchedGoodsReceiptRequest'
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -275,8 +322,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/GoodsReceipt'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     delete:
       operationId: grn_destroy
+      summary: Delete goods receipt
       parameters:
       - in: path
         name: id
@@ -285,16 +341,26 @@ paths:
         description: A unique integer value identifying this goods receipt.
         required: true
       tags:
-      - grn
+      - Procurement / GRN
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '204':
-          description: No response body
+          description: No content
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/health/:
     get:
       operationId: health_check
       description: Lightweight liveness check.
+      summary: Liveness check
       tags:
       - Health
       responses:
@@ -305,9 +371,12 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+        '400':
+          description: Bad Request
   /api/inventory/:
     get:
       operationId: inventory_list
+      summary: List inventory entries
       parameters:
       - in: query
         name: from
@@ -343,6 +412,7 @@ paths:
       - Inventory
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -350,8 +420,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedInventoryEntryList'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     post:
       operationId: inventory_create
+      summary: Create inventory entry
       tags:
       - inventory
       requestBody:
@@ -368,6 +447,7 @@ paths:
         required: true
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '201':
           content:
@@ -375,9 +455,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryEntry'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/inventory-entries/:
     get:
       operationId: inventory_entries_list
+      summary: List inventory entries
       parameters:
       - name: limit
         required: false
@@ -395,6 +484,7 @@ paths:
       - inventory-entries
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -402,8 +492,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedInventoryEntryList'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     post:
       operationId: inventory_entries_create
+      summary: Create inventory entry
       tags:
       - inventory-entries
       requestBody:
@@ -419,6 +518,7 @@ paths:
               $ref: '#/components/schemas/InventoryEntryRequest'
         required: true
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '201':
@@ -427,9 +527,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryEntry'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/inventory-entries/{id}/:
     get:
       operationId: inventory_entries_retrieve
+      summary: Get inventory entry
       parameters:
       - in: path
         name: id
@@ -442,6 +551,7 @@ paths:
       - inventory-entries
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -449,8 +559,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryEntry'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     put:
       operationId: inventory_entries_update
+      summary: Replace inventory entry
       parameters:
       - in: path
         name: id
@@ -475,6 +594,7 @@ paths:
         required: true
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -482,8 +602,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryEntry'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     patch:
       operationId: inventory_entries_partial_update
+      summary: Update inventory entry
       parameters:
       - in: path
         name: id
@@ -507,6 +636,7 @@ paths:
               $ref: '#/components/schemas/PatchedInventoryEntryRequest'
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -514,8 +644,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryEntry'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     delete:
       operationId: inventory_entries_destroy
+      summary: Delete inventory entry
       parameters:
       - in: path
         name: id
@@ -527,13 +666,23 @@ paths:
       tags:
       - inventory-entries
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '204':
-          description: No response body
+          description: No content
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/inventory-entries/{id}/attachments/:
     get:
       operationId: inventory_entry_attachments_list
+      summary: List entry attachments
       parameters:
       - in: path
         name: id
@@ -558,6 +707,7 @@ paths:
       - Inventory / Attachments
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -565,8 +715,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedInventoryAttachmentList'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     post:
       operationId: inventory_entry_attachments_create
+      summary: Upload entry attachment
       parameters:
       - in: path
         name: id
@@ -596,6 +755,7 @@ paths:
               - file
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '201':
           content:
@@ -603,9 +763,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryAttachment'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/inventory-entries/{id}/attachments/{att_id}/:
     delete:
       operationId: inventory_entry_delete_attachment
+      summary: Delete entry attachment
       parameters:
       - in: path
         name: att_id
@@ -624,12 +793,22 @@ paths:
       - Inventory / Attachments
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '204':
-          description: No response body
+          description: No content
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/inventory/{id}/:
     get:
       operationId: inventory_retrieve
+      summary: Get inventory entry
       parameters:
       - in: path
         name: id
@@ -642,6 +821,7 @@ paths:
       - inventory
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -649,8 +829,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryEntry'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     put:
       operationId: inventory_update
+      summary: Replace inventory entry
       parameters:
       - in: path
         name: id
@@ -675,6 +864,7 @@ paths:
         required: true
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -682,8 +872,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryEntry'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     patch:
       operationId: inventory_partial_update
+      summary: Update inventory entry
       parameters:
       - in: path
         name: id
@@ -707,6 +906,7 @@ paths:
               $ref: '#/components/schemas/PatchedInventoryEntryRequest'
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -714,8 +914,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryEntry'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     delete:
       operationId: inventory_destroy
+      summary: Delete inventory entry
       parameters:
       - in: path
         name: id
@@ -727,13 +936,24 @@ paths:
       tags:
       - inventory
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '204':
-          description: No response body
+          description: No content
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/inventory/{id}/audit-logs/:
     get:
-      operationId: inventory_audit_logs_retrieve
+      operationId: inventory_audit_logs
+      description: List audit events for a specific inventory entry (most recent first).
+      summary: List audit logs for an entry
       parameters:
       - in: path
         name: id
@@ -742,21 +962,43 @@ paths:
           format: uuid
         description: A UUID string identifying this inventory entry.
         required: true
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
       tags:
       - inventory
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InventoryEntry'
+                $ref: '#/components/schemas/PaginatedAuditLogList'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/inventory/export/:
     get:
       operationId: inventory_export_csv
       description: Download filtered inventory as CSV. Honors q, status, from, to.
+      summary: Export inventory as CSV
       parameters:
       - in: query
         name: from
@@ -784,6 +1026,7 @@ paths:
       - Reports
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -792,32 +1035,165 @@ paths:
                 type: string
                 format: binary
           description: CSV file
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/inventory/import-excel/:
     post:
-      operationId: inventory_import_excel_create
+      operationId: inventory_import_excel
+      description: |-
+        Upload .xlsx or .csv via multipart/form-data with field `file`.
+        Required columns: date, truck_registration, quantity (aliases supported).
+      summary: Import inventory from Excel/CSV
       tags:
-      - inventory
+      - Inventory
       requestBody:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/InventoryEntryRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/InventoryEntryRequest'
-        required: true
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InventoryEntry'
+                type: object
+                additionalProperties: {}
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+  /api/inventory/recent/:
+    get:
+      operationId: inventory_recent
+      summary: Recent inventory entries
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: Start date (inclusive)
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: offset
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Free text search
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: Status filter
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+        description: End date (inclusive)
+      tags:
+      - Inventory
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInventoryEntryList'
+          description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+  /api/inventory/sample/:
+    get:
+      operationId: inventory_sample
+      summary: Sampled inventory entries
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: Start date (inclusive)
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: offset
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Free text search
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: Status filter
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+        description: End date (inclusive)
+      tags:
+      - Inventory
+      security:
+      - jwtAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInventoryEntryList'
+          description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/inventory/summary/:
     get:
       operationId: inventory_summary
+      summary: Inventory KPIs (global)
       parameters:
       - in: query
         name: from
@@ -845,6 +1221,7 @@ paths:
       - Inventory
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -853,9 +1230,18 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/lpos/:
     get:
       operationId: lpo_list
+      summary: List LPOs
       parameters:
       - name: limit
         required: false
@@ -873,6 +1259,7 @@ paths:
       - Procurement / LPO
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -880,8 +1267,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedLPOList'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     post:
       operationId: lpo_create
+      summary: Create LPO
       tags:
       - Procurement / LPO
       requestBody:
@@ -897,6 +1293,7 @@ paths:
               $ref: '#/components/schemas/LPORequest'
         required: true
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '201':
@@ -905,9 +1302,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/LPO'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/lpos/{id}/:
     get:
       operationId: lpo_retrieve
+      summary: Get LPO
       parameters:
       - in: path
         name: id
@@ -919,6 +1325,7 @@ paths:
       - Procurement / LPO
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -926,8 +1333,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/LPO'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     put:
       operationId: lpo_update
+      summary: Replace LPO
       parameters:
       - in: path
         name: id
@@ -951,6 +1367,7 @@ paths:
         required: true
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -958,8 +1375,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/LPO'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     patch:
       operationId: lpo_partial_update
+      summary: Update LPO
       parameters:
       - in: path
         name: id
@@ -982,6 +1408,7 @@ paths:
               $ref: '#/components/schemas/PatchedLPORequest'
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -989,8 +1416,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/LPO'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     delete:
       operationId: lpo_destroy
+      summary: Delete LPO
       parameters:
       - in: path
         name: id
@@ -1001,13 +1437,23 @@ paths:
       tags:
       - Procurement / LPO
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '204':
-          description: No response body
+          description: No content
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/lpos/{id}/approve/:
     post:
       operationId: lpo_approve
+      summary: Approve LPO
       parameters:
       - in: path
         name: id
@@ -1030,6 +1476,7 @@ paths:
               $ref: '#/components/schemas/LPORequest'
         required: true
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '200':
@@ -1039,9 +1486,18 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/lpos/{id}/attachments/:
     get:
       operationId: lpo_attachments_list
+      summary: List LPO attachments
       parameters:
       - in: path
         name: id
@@ -1065,6 +1521,7 @@ paths:
       - Procurement / LPO Attachments
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1072,8 +1529,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedLPOAttachmentList'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     post:
       operationId: lpo_attachments_create
+      summary: Upload LPO attachment
       parameters:
       - in: path
         name: id
@@ -1102,6 +1568,7 @@ paths:
               - file
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '201':
           content:
@@ -1109,9 +1576,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/LPOAttachment'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/lpos/{id}/attachments/{att_id}/:
     delete:
       operationId: lpo_delete_attachment
+      summary: Delete LPO attachment
       parameters:
       - in: path
         name: att_id
@@ -1129,12 +1605,22 @@ paths:
       - Procurement / LPO
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '204':
-          description: No response body
+          description: No content
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/lpos/{id}/cancel/:
     post:
       operationId: lpo_cancel
+      summary: Cancel LPO
       parameters:
       - in: path
         name: id
@@ -1158,6 +1644,7 @@ paths:
         required: true
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1166,9 +1653,18 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/lpos/{id}/pdf/:
     get:
       operationId: lpo_pdf
+      summary: Get LPO PDF
       parameters:
       - in: path
         name: id
@@ -1179,6 +1675,7 @@ paths:
       tags:
       - Procurement / LPO
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '200':
@@ -1188,9 +1685,18 @@ paths:
                 type: string
                 format: binary
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/lpos/{id}/submit/:
     post:
       operationId: lpo_submit
+      summary: Submit LPO
       parameters:
       - in: path
         name: id
@@ -1214,6 +1720,7 @@ paths:
         required: true
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1222,154 +1729,43 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/schema/:
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+  /api/lpos/summary/:
     get:
-      operationId: schema_retrieve
-      description: |-
-        OpenApi3 schema for this API. Format can be selected via content negotiation.
-
-        - YAML: application/vnd.oai.openapi
-        - JSON: application/vnd.oai.openapi+json
-      parameters:
-      - in: query
-        name: format
-        schema:
-          type: string
-          enum:
-          - json
-          - yaml
-      - in: query
-        name: lang
-        schema:
-          type: string
-          enum:
-          - af
-          - ar
-          - ar-dz
-          - ast
-          - az
-          - be
-          - bg
-          - bn
-          - br
-          - bs
-          - ca
-          - ckb
-          - cs
-          - cy
-          - da
-          - de
-          - dsb
-          - el
-          - en
-          - en-au
-          - en-gb
-          - eo
-          - es
-          - es-ar
-          - es-co
-          - es-mx
-          - es-ni
-          - es-ve
-          - et
-          - eu
-          - fa
-          - fi
-          - fr
-          - fy
-          - ga
-          - gd
-          - gl
-          - he
-          - hi
-          - hr
-          - hsb
-          - hu
-          - hy
-          - ia
-          - id
-          - ig
-          - io
-          - is
-          - it
-          - ja
-          - ka
-          - kab
-          - kk
-          - km
-          - kn
-          - ko
-          - ky
-          - lb
-          - lt
-          - lv
-          - mk
-          - ml
-          - mn
-          - mr
-          - ms
-          - my
-          - nb
-          - ne
-          - nl
-          - nn
-          - os
-          - pa
-          - pl
-          - pt
-          - pt-br
-          - ro
-          - ru
-          - sk
-          - sl
-          - sq
-          - sr
-          - sr-latn
-          - sv
-          - sw
-          - ta
-          - te
-          - tg
-          - th
-          - tk
-          - tr
-          - tt
-          - udm
-          - ug
-          - uk
-          - ur
-          - uz
-          - vi
-          - zh-hans
-          - zh-hant
+      operationId: lpo_summary
+      summary: LPO KPIs
       tags:
-      - schema
+      - Procurement / LPO
       security:
       - jwtAuth: []
-      - {}
+      - jwtAuth: []
       responses:
         '200':
           content:
-            application/vnd.oai.openapi:
-              schema:
-                type: object
-                additionalProperties: {}
-            application/yaml:
-              schema:
-                type: object
-                additionalProperties: {}
-            application/vnd.oai.openapi+json:
-              schema:
-                type: object
-                additionalProperties: {}
             application/json:
               schema:
                 type: object
                 additionalProperties: {}
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/suppliers/:
     get:
       operationId: supplier_list
+      summary: List suppliers
       parameters:
       - name: limit
         required: false
@@ -1387,6 +1783,7 @@ paths:
       - Procurement / Suppliers
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1394,8 +1791,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedSupplierList'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     post:
       operationId: supplier_create
+      summary: Create supplier
       tags:
       - Procurement / Suppliers
       requestBody:
@@ -1411,6 +1817,7 @@ paths:
               $ref: '#/components/schemas/SupplierRequest'
         required: true
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '201':
@@ -1419,9 +1826,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/Supplier'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/suppliers/{id}/:
     get:
       operationId: supplier_retrieve
+      summary: Get supplier
       parameters:
       - in: path
         name: id
@@ -1433,6 +1849,7 @@ paths:
       - Procurement / Suppliers
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1440,8 +1857,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/Supplier'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     put:
       operationId: supplier_update
+      summary: Replace supplier
       parameters:
       - in: path
         name: id
@@ -1465,6 +1891,7 @@ paths:
         required: true
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1472,8 +1899,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/Supplier'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     patch:
       operationId: supplier_partial_update
+      summary: Update supplier
       parameters:
       - in: path
         name: id
@@ -1496,6 +1932,7 @@ paths:
               $ref: '#/components/schemas/PatchedSupplierRequest'
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1503,8 +1940,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/Supplier'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     delete:
       operationId: supplier_destroy
+      summary: Delete supplier
       parameters:
       - in: path
         name: id
@@ -1515,10 +1961,19 @@ paths:
       tags:
       - Procurement / Suppliers
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '204':
-          description: No response body
+          description: No content
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/users/:
     get:
       operationId: users_list
@@ -1528,6 +1983,7 @@ paths:
           - GET  /api/users/me/                 : current user profile (any authenticated user)
           - POST /api/users/me/password/        : change own password (any authenticated user)
           - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
+      summary: List users
       parameters:
       - name: limit
         required: false
@@ -1545,6 +2001,7 @@ paths:
       - Users
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1552,6 +2009,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedUserBaseList'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     post:
       operationId: users_create
       description: |-
@@ -1560,6 +2025,7 @@ paths:
           - GET  /api/users/me/                 : current user profile (any authenticated user)
           - POST /api/users/me/password/        : change own password (any authenticated user)
           - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
+      summary: Create user
       tags:
       - Users
       requestBody:
@@ -1576,6 +2042,7 @@ paths:
         required: true
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '201':
           content:
@@ -1583,6 +2050,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserBase'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/users/{id}/:
     get:
       operationId: users_retrieve
@@ -1592,6 +2067,7 @@ paths:
           - GET  /api/users/me/                 : current user profile (any authenticated user)
           - POST /api/users/me/password/        : change own password (any authenticated user)
           - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
+      summary: Get user
       parameters:
       - in: path
         name: id
@@ -1603,6 +2079,7 @@ paths:
       - Users
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1610,6 +2087,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserBase'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     put:
       operationId: users_update
       description: |-
@@ -1618,6 +2103,7 @@ paths:
           - GET  /api/users/me/                 : current user profile (any authenticated user)
           - POST /api/users/me/password/        : change own password (any authenticated user)
           - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
+      summary: Replace user
       parameters:
       - in: path
         name: id
@@ -1640,6 +2126,7 @@ paths:
               $ref: '#/components/schemas/UserUpdateRequest'
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1647,6 +2134,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserBase'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     patch:
       operationId: users_partial_update
       description: |-
@@ -1655,6 +2150,7 @@ paths:
           - GET  /api/users/me/                 : current user profile (any authenticated user)
           - POST /api/users/me/password/        : change own password (any authenticated user)
           - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
+      summary: Update user
       parameters:
       - in: path
         name: id
@@ -1676,6 +2172,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedUserUpdateRequest'
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '200':
@@ -1684,6 +2181,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserBase'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     delete:
       operationId: users_destroy
       description: |-
@@ -1692,6 +2197,7 @@ paths:
           - GET  /api/users/me/                 : current user profile (any authenticated user)
           - POST /api/users/me/password/        : change own password (any authenticated user)
           - POST /api/users/{id}/set-password/  : set another user's password (superadmin only)
+      summary: Delete user
       parameters:
       - in: path
         name: id
@@ -1703,13 +2209,23 @@ paths:
       - Users
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '204':
-          description: No response body
+          description: No content
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/users/{id}/set-password/:
     post:
       operationId: users_set_password
       description: Super Admin can set a new password for a user.
+      summary: Set user password
       parameters:
       - in: path
         name: id
@@ -1733,16 +2249,27 @@ paths:
         required: true
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           description: Password updated successfully
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/users/me/:
     get:
       operationId: users_me
       description: Return the currently authenticated user.
+      summary: Get current user
       tags:
       - Users
       security:
+      - jwtAuth: []
       - jwtAuth: []
       responses:
         '200':
@@ -1751,11 +2278,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/Me'
           description: ''
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/users/me/password/:
     post:
       operationId: users_change_own_password
       description: Authenticated user can change their own password by providing current
         and new passwords.
+      summary: Change pwn password
       tags:
       - Users
       requestBody:
@@ -1772,9 +2308,18 @@ paths:
         required: true
       security:
       - jwtAuth: []
+      - jwtAuth: []
       responses:
         '200':
           description: Password updated successfully
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
 components:
   schemas:
     AuditLog:
@@ -1797,20 +2342,11 @@ components:
         changes:
           readOnly: true
           nullable: true
+          type: string
         timestamp:
           type: string
           format: date-time
           readOnly: true
-      required:
-      - action
-      - changes
-      - entry_id
-      - id
-      - timestamp
-      - user_username
-    BlankEnum:
-      enum:
-      - ''
     ChangeOwnPasswordRequest:
       type: object
       properties:
@@ -1874,11 +2410,8 @@ components:
           items:
             $ref: '#/components/schemas/GRNItemIn'
       required:
-      - id
       - items
       - lpo
-      - received_at
-      - received_by
     GoodsReceiptRequest:
       type: object
       properties:
@@ -1909,7 +2442,16 @@ components:
           type: string
           format: uri
         kind:
-          $ref: '#/components/schemas/InventoryAttachmentKindEnum'
+          enum:
+          - photo
+          - spec
+          - other
+          type: string
+          description: |-
+            * `photo` - Photo
+            * `spec` - Spec
+            * `other` - Other
+          x-spec-enum-id: 778c6258010ef693
         mime_type:
           type: string
           readOnly: true
@@ -1938,26 +2480,8 @@ components:
           format: date-time
           readOnly: true
       required:
-      - checksum
       - entry
       - file
-      - height
-      - id
-      - mime_type
-      - size_kb
-      - uploaded_at
-      - uploaded_by
-      - width
-    InventoryAttachmentKindEnum:
-      enum:
-      - photo
-      - spec
-      - other
-      type: string
-      description: |-
-        * `photo` - Photo
-        * `spec` - Spec
-        * `other` - Other
     InventoryEntry:
       type: object
       properties:
@@ -1965,6 +2489,21 @@ components:
           type: string
           format: uuid
           readOnly: true
+        payment_type:
+          enum:
+          - cash
+          - transfer
+          - credit
+          - other
+          - null
+          type: string
+          description: |-
+            * `cash` - Cash
+            * `transfer` - Transfer
+            * `credit` - Credit
+            * `other` - Other
+          x-spec-enum-id: c6f32876c6b228bb
+          nullable: true
         date:
           type: string
           format: date
@@ -1987,7 +2526,18 @@ components:
           type: string
           maxLength: 80
         status:
-          $ref: '#/components/schemas/InventoryEntryStatusEnum'
+          enum:
+          - pending
+          - in_transit
+          - delivered
+          - rejected
+          type: string
+          description: |-
+            * `pending` - Pending
+            * `in_transit` - In Transit
+            * `delivered` - Delivered
+            * `rejected` - Rejected
+          x-spec-enum-id: db7afe24963a386c
         driver_name:
           type: string
           nullable: true
@@ -2019,12 +2569,6 @@ components:
           type: string
           nullable: true
           maxLength: 255
-        payment_type:
-          nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/PaymentTypeEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
         analysis_results:
           type: string
           nullable: true
@@ -2066,17 +2610,26 @@ components:
           readOnly: true
           nullable: true
       required:
-      - created_at
-      - created_by
       - date
-      - deleted
-      - id
-      - modified_by
       - truck_registration
-      - updated_at
     InventoryEntryRequest:
       type: object
       properties:
+        payment_type:
+          enum:
+          - cash
+          - transfer
+          - credit
+          - other
+          - null
+          type: string
+          description: |-
+            * `cash` - Cash
+            * `transfer` - Transfer
+            * `credit` - Credit
+            * `other` - Other
+          x-spec-enum-id: c6f32876c6b228bb
+          nullable: true
         date:
           type: string
           format: date
@@ -2100,7 +2653,18 @@ components:
           minLength: 1
           maxLength: 80
         status:
-          $ref: '#/components/schemas/InventoryEntryStatusEnum'
+          enum:
+          - pending
+          - in_transit
+          - delivered
+          - rejected
+          type: string
+          description: |-
+            * `pending` - Pending
+            * `in_transit` - In Transit
+            * `delivered` - Delivered
+            * `rejected` - Rejected
+          x-spec-enum-id: db7afe24963a386c
         driver_name:
           type: string
           nullable: true
@@ -2133,12 +2697,6 @@ components:
           type: string
           nullable: true
           maxLength: 255
-        payment_type:
-          nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/PaymentTypeEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
         analysis_results:
           type: string
           nullable: true
@@ -2163,18 +2721,6 @@ components:
       required:
       - date
       - truck_registration
-    InventoryEntryStatusEnum:
-      enum:
-      - pending
-      - in_transit
-      - delivered
-      - rejected
-      type: string
-      description: |-
-        * `pending` - Pending
-        * `in_transit` - In Transit
-        * `delivered` - Delivered
-        * `rejected` - Rejected
     LPO:
       type: object
       properties:
@@ -2191,8 +2737,22 @@ components:
           type: string
           readOnly: true
         status:
-          allOf:
-          - $ref: '#/components/schemas/LPOStatusEnum'
+          enum:
+          - draft
+          - submitted
+          - approved
+          - partially_received
+          - fulfilled
+          - cancelled
+          type: string
+          description: |-
+            * `draft` - Draft
+            * `submitted` - Submitted
+            * `approved` - Approved
+            * `partially_received` - Partially Received
+            * `fulfilled` - Fulfilled
+            * `cancelled` - Cancelled
+          x-spec-enum-id: ec3267100269439c
           readOnly: true
         currency:
           type: string
@@ -2253,20 +2813,19 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LPOItem'
+        created_by_name:
+          type: string
+          readOnly: true
+        deleted:
+          type: boolean
+        submitted_by:
+          type: integer
+          readOnly: true
+        submitted_by_name:
+          type: string
+          readOnly: true
       required:
-      - approved_at
-      - approved_by
-      - created_at
-      - created_by
-      - grand_total
-      - id
       - items
-      - lpo_number
-      - status
-      - submitted_at
-      - subtotal
-      - supplier_name_display
-      - updated_at
     LPOAttachment:
       type: object
       properties:
@@ -2279,7 +2838,16 @@ components:
           type: string
           format: uri
         kind:
-          $ref: '#/components/schemas/LPOAttachmentKindEnum'
+          enum:
+          - quotation
+          - spec
+          - other
+          type: string
+          description: |-
+            * `quotation` - Quotation
+            * `spec` - Spec
+            * `other` - Other
+          x-spec-enum-id: dc41e1b2b7f39e16
         mime_type:
           type: string
           readOnly: true
@@ -2304,25 +2872,8 @@ components:
           format: date-time
           readOnly: true
       required:
-      - checksum
       - file
-      - height
-      - id
       - lpo
-      - mime_type
-      - size_kb
-      - uploaded_at
-      - width
-    LPOAttachmentKindEnum:
-      enum:
-      - quotation
-      - spec
-      - other
-      type: string
-      description: |-
-        * `quotation` - Quotation
-        * `spec` - Spec
-        * `other` - Other
     LPOItem:
       type: object
       properties:
@@ -2349,8 +2900,6 @@ components:
           pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
           readOnly: true
       required:
-      - id
-      - line_total
       - qty
       - unit_price
     LPOItemRequest:
@@ -2407,24 +2956,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LPOItemRequest'
+        deleted:
+          type: boolean
       required:
       - items
-    LPOStatusEnum:
-      enum:
-      - draft
-      - submitted
-      - approved
-      - partially_received
-      - fulfilled
-      - cancelled
-      type: string
-      description: |-
-        * `draft` - Draft
-        * `submitted` - Submitted
-        * `approved` - Approved
-        * `partially_received` - Partially Received
-        * `fulfilled` - Fulfilled
-        * `cancelled` - Cancelled
     Me:
       type: object
       description: Read-only representation of the current user.
@@ -2462,13 +2997,7 @@ components:
           format: date-time
           readOnly: true
       required:
-      - date_joined
-      - id
-      - role
       - username
-    NullEnum:
-      enum:
-      - null
     PaginatedAuditLogList:
       type: object
       required:
@@ -2670,6 +3199,21 @@ components:
     PatchedInventoryEntryRequest:
       type: object
       properties:
+        payment_type:
+          enum:
+          - cash
+          - transfer
+          - credit
+          - other
+          - null
+          type: string
+          description: |-
+            * `cash` - Cash
+            * `transfer` - Transfer
+            * `credit` - Credit
+            * `other` - Other
+          x-spec-enum-id: c6f32876c6b228bb
+          nullable: true
         date:
           type: string
           format: date
@@ -2693,7 +3237,18 @@ components:
           minLength: 1
           maxLength: 80
         status:
-          $ref: '#/components/schemas/InventoryEntryStatusEnum'
+          enum:
+          - pending
+          - in_transit
+          - delivered
+          - rejected
+          type: string
+          description: |-
+            * `pending` - Pending
+            * `in_transit` - In Transit
+            * `delivered` - Delivered
+            * `rejected` - Rejected
+          x-spec-enum-id: db7afe24963a386c
         driver_name:
           type: string
           nullable: true
@@ -2726,12 +3281,6 @@ components:
           type: string
           nullable: true
           maxLength: 255
-        payment_type:
-          nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/PaymentTypeEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
         analysis_results:
           type: string
           nullable: true
@@ -2787,6 +3336,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LPOItemRequest'
+        deleted:
+          type: boolean
     PatchedSupplierRequest:
       type: object
       properties:
@@ -2834,27 +3385,14 @@ components:
           description: Designates whether this user should be treated as active. Unselect
             this instead of deleting accounts.
         role:
-          $ref: '#/components/schemas/RoleEnum'
-    PaymentTypeEnum:
-      enum:
-      - cash
-      - transfer
-      - credit
-      - other
-      type: string
-      description: |-
-        * `cash` - Cash
-        * `transfer` - Transfer
-        * `credit` - Credit
-        * `other` - Other
-    RoleEnum:
-      enum:
-      - staff
-      - manager
-      type: string
-      description: |-
-        * `staff` - staff
-        * `manager` - manager
+          enum:
+          - staff
+          - manager
+          type: string
+          description: |-
+            * `staff` - staff
+            * `manager` - manager
+          x-spec-enum-id: 8f2a4513995fb1c3
     SetPasswordRequest:
       type: object
       properties:
@@ -2897,9 +3435,7 @@ components:
         is_active:
           type: boolean
       required:
-      - id
       - name
-      - supplier_code
     SupplierRequest:
       type: object
       properties:
@@ -2929,18 +3465,6 @@ components:
           type: boolean
       required:
       - name
-    TokenObtainPair:
-      type: object
-      properties:
-        access:
-          type: string
-          readOnly: true
-        refresh:
-          type: string
-          readOnly: true
-      required:
-      - access
-      - refresh
     TokenObtainPairRequest:
       type: object
       properties:
@@ -2955,14 +3479,6 @@ components:
       required:
       - password
       - username
-    TokenRefresh:
-      type: object
-      properties:
-        access:
-          type: string
-          readOnly: true
-      required:
-      - access
     TokenRefreshRequest:
       type: object
       properties:
@@ -3008,9 +3524,6 @@ components:
           format: date-time
           readOnly: true
       required:
-      - date_joined
-      - id
-      - role
       - username
     UserCreateRequest:
       type: object
@@ -3034,8 +3547,14 @@ components:
           type: string
           maxLength: 150
         role:
-          allOf:
-          - $ref: '#/components/schemas/RoleEnum'
+          enum:
+          - staff
+          - manager
+          type: string
+          description: |-
+            * `staff` - staff
+            * `manager` - manager
+          x-spec-enum-id: 8f2a4513995fb1c3
           writeOnly: true
         password:
           type: string
@@ -3065,7 +3584,14 @@ components:
           description: Designates whether this user should be treated as active. Unselect
             this instead of deleting accounts.
         role:
-          $ref: '#/components/schemas/RoleEnum'
+          enum:
+          - staff
+          - manager
+          type: string
+          description: |-
+            * `staff` - staff
+            * `manager` - manager
+          x-spec-enum-id: 8f2a4513995fb1c3
   securitySchemes:
     jwtAuth:
       type: http

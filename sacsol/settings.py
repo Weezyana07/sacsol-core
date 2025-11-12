@@ -1,3 +1,4 @@
+# sacsol/settings.py 
 """
 Django settings for sacsol project.
 
@@ -51,7 +52,7 @@ SACSOL_LPO_PREFIX = os.getenv("SACSOL_LPO_PREFIX", "LPO")
 INSTALLED_APPS = [
     'django.contrib.admin','django.contrib.auth','django.contrib.contenttypes','django.contrib.sessions','django.contrib.messages','django.contrib.staticfiles',
     'rest_framework','rest_framework_simplejwt','drf_spectacular','corsheaders',
-    'inventory','accounts.apps.AccountsConfig','procurement'
+    'inventory','accounts.apps.AccountsConfig','procurement','core'
 ]
 
 
@@ -120,13 +121,33 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Sacsol API",
     "DESCRIPTION": "Inventory management API for Sacsol",
     "VERSION": "1.0.0",
+    "LICENSE": {"name": "Apache-2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"},
     "SERVERS": [{"url": "/"}],
     "COMPONENT_SPLIT_REQUEST": True,
     "SORT_OPERATIONS": True,
-    "SCHEMA_PATH_PREFIX": r"/api",  # if you mount under /api
+    "SCHEMA_PATH_PREFIX": r"/api",
     "SWAGGER_UI_SETTINGS": {"persistAuthorization": True},
-}
+    "SERVE_INCLUDE_SCHEMA": False,
 
+    # 🔽 add these
+    "SECURITY": [{"jwtAuth": []}],
+    "SECURITY_SCHEMES": {
+        "jwtAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+    },
+    "CUSTOM_FIELD_SCHEMA": {
+        # dotted path to your field class
+        "inventory.serializers.NullableChoiceField": lambda field: {
+            "type": "string",
+            "nullable": True,
+            # emit enum if present
+            **({"enum": [c[0] for c in getattr(field, "choices", [])]} if getattr(field, "choices", None) else {}),
+        }
+    },
+    "POSTPROCESSING_HOOKS": ["core.openapi_hooks.fix_nullable_without_type"],
+
+    # keep PATCH shapes simple (optional; reduces fancy oneOf on partials)
+    "COMPONENT_NO_READ_ONLY_REQUIRED": True,
+}
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 

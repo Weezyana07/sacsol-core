@@ -9,6 +9,8 @@ from .models import (
     AuditLog, Supplier, LPO, LPOItem, LPOAttachment,
     GoodsReceipt, GoodsReceiptItem,
 )
+from drf_spectacular.utils import extend_schema_field, OpenApiTypes
+from core.roles import is_manager_or_owner  
 
 # =========================
 # Supplier
@@ -54,8 +56,11 @@ class SupplierSerializer(serializers.ModelSerializer):
 # =========================
 # LPO Items
 # =========================
+from decimal import Decimal as D
+from rest_framework import serializers
+# ...imports...
+
 class LPOItemSerializer(serializers.ModelSerializer):
-    # Make FK optional; allow empty string -> None
     inventory_item = serializers.PrimaryKeyRelatedField(
         queryset=InventoryEntry.objects.all(),
         required=False,
@@ -63,10 +68,18 @@ class LPOItemSerializer(serializers.ModelSerializer):
     )
     description = serializers.CharField(required=False, allow_blank=True)
 
+    # READ-ONLY computed fields
+    total_received = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)  # <-- NO source
+    received_so_far = serializers.SerializerMethodField(read_only=True)
+    remaining = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = LPOItem
-        fields = ["id", "inventory_item", "description", "qty", "unit_price", "line_total"]
-        read_only_fields = ["id", "line_total"]
+        fields = [
+            "id","inventory_item", "description","qty","unit_price","line_total",
+            "total_received",  "received_so_far",  "remaining",          
+        ]
+        read_only_fields = ["id", "line_total", "total_received", "received_so_far", "remaining"]
 
     def to_internal_value(self, data):
         d = dict(data)
@@ -80,11 +93,18 @@ class LPOItemSerializer(serializers.ModelSerializer):
         if not inv and not desc:
             raise serializers.ValidationError("Provide either inventory_item or description.")
         if inv and not desc:
-            # default description from inventory when omitted
             desc = getattr(inv, "description", "") or getattr(inv, "mineral_or_equipment", "") or ""
             attrs["description"] = desc
         return attrs
 
+    # ---------- computed helpers ----------
+    def get_received_so_far(self, obj) -> D:
+        # uses LPOItem.total_received @property
+        return obj.total_received or D("0")
+
+    def get_remaining(self, obj) -> D:
+        rec = obj.total_received or D("0")
+        return (obj.qty or D("0")) - rec
 
 # =========================
 # LPO (header)
@@ -101,23 +121,106 @@ class LPOSerializer(serializers.ModelSerializer):
     supplier_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
     supplier_name_display = serializers.CharField(source="supplier.name", read_only=True)
 
+    created_by_name = serializers.SerializerMethodField(read_only=True)
+    submitted_by = serializers.PrimaryKeyRelatedField(read_only=True)                 # ← NEW
+    submitted_by_name = serializers.SerializerMethodField(read_only=True)             
+
+    tax_enabled = serializers.BooleanField(default=True, required=False)
+    tax_rate = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, allow_null=True)
+    tax_amount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+
+    can_submit = serializers.SerializerMethodField(read_only=True)
+    can_approve = serializers.SerializerMethodField(read_only=True)
+    can_cancel = serializers.SerializerMethodField(read_only=True)
+    can_receive = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = LPO
         fields = [
             "id", "supplier", "supplier_name", "supplier_name_display",
             "lpo_number", "status",
             "currency", "delivery_address", "expected_delivery_date", "payment_terms",
-            "subtotal", "tax_amount", "discount_amount", "grand_total",
+            "subtotal",
+            # ↓ include these two
+            "tax_enabled", "tax_rate",
+            "tax_amount", "discount_amount", "grand_total",
             "created_by", "approved_by", "created_at", "updated_at", "submitted_at", "approved_at",
-            "items",
+            "items", "created_by_name", "deleted", "submitted_by","submitted_by_name",
+            "can_submit", "can_approve", "can_cancel", "can_receive", 
         ]
         read_only_fields = [
             "id", "lpo_number", "status", "subtotal", "grand_total",
             "approved_by", "created_at", "updated_at", "submitted_at", "approved_at", "created_by",
-            "supplier_name_display",
+            "supplier_name_display", "submitted_by","submitted_by_name",
+            "can_submit", "can_approve", "can_cancel", "can_receive",
         ]
 
+    def _u(self):
+        return getattr(self.context.get("request"), "user", None)
+
+    @extend_schema_field(OpenApiTypes.BOOL)
+    def get_can_submit(self, obj: LPO):
+        u = self._u()
+        if not u or not u.is_authenticated: return False
+        # Allow the creator (or superuser) to submit while draft and valid totals
+        return (obj.status == obj.STATUS_DRAFT) and (obj.grand_total > 0) and (u == obj.created_by or u.is_superuser)
+
+    # @extend_schema_field(OpenApiTypes.BOOL)
+    # def get_can_approve(self, obj: LPO):
+    #     u = self._u()
+    #     if not u or not u.is_authenticated: return False
+    #     # Only superusers (or users with a specific permission) can approve
+    #     return (obj.status == obj.STATUS_SUBMITTED) and (
+    #         u.is_superuser or u.has_perm("procurement.approve_lpo")
+    #     )
+    @extend_schema_field(OpenApiTypes.BOOL)
+    def get_can_approve(self, obj: LPO):
+        u = self._u()
+        if not u or not u.is_authenticated:
+            return False
+        return (obj.status == obj.STATUS_SUBMITTED) and (u.is_superuser or is_manager_or_owner(u))
+
+    @extend_schema_field(OpenApiTypes.BOOL)
+    def get_can_cancel(self, obj: LPO):
+        u = self._u()
+        if not u or not u.is_authenticated:
+            return False
+        if obj.status in {obj.STATUS_CANCELLED, obj.STATUS_FULFILLED}:
+            return False
+        # Super admin always allowed to cancel
+        if getattr(u, "is_superuser", False):
+            return True
+        # Managers must NOT be able to cancel (even if they created it)
+        if u.has_perm("procurement.approve_lpo"):
+            return False
+        # Everyone else cannot cancel
+        return (obj.status == obj.STATUS_DRAFT) and (u == obj.created_by)
+
+    @extend_schema_field(OpenApiTypes.BOOL)
+    def get_can_receive(self, obj: LPO):
+        u = self._u()
+        if not u or not u.is_authenticated:
+            return False
+        return obj.status in {getattr(obj, "STATUS_APPROVED", "approved"),
+                              getattr(obj, "STATUS_PARTIAL", "partially_received")}
+
     # --- validations ---
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_submitted_by_name(self, obj):
+        u = getattr(obj, "submitted_by", None)
+        if not u:
+            return None
+        full = getattr(u, "get_full_name", lambda: "")()
+        return full or getattr(u, "username", None) or getattr(u, "email", None)
+    
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_created_by_name(self, obj):
+        u = getattr(obj, "created_by", None)
+        if not u:
+            return None
+        full = getattr(u, "get_full_name", lambda: "")() or ""
+        return full or getattr(u, "username", None)
+    
     def validate_items(self, items):
         if not items:
             raise serializers.ValidationError("At least one item is required.")
@@ -127,16 +230,7 @@ class LPOSerializer(serializers.ModelSerializer):
             if Decimal(it.get("unit_price") or "0") < 0:
                 raise serializers.ValidationError("Item unit_price cannot be negative.")
         return items
-
-    def validate(self, attrs):
-        tax = Decimal(attrs.get("tax_amount") or "0")
-        disc = Decimal(attrs.get("discount_amount") or "0")
-        if tax < 0:
-            raise serializers.ValidationError({"tax_amount": "Tax amount cannot be negative."})
-        if disc < 0:
-            raise serializers.ValidationError({"discount_amount": "Discount amount cannot be negative."})
-        return attrs
-
+    
     # --- helpers ---
     def _ensure_supplier(self, data: dict) -> None:
         
@@ -171,8 +265,23 @@ class LPOSerializer(serializers.ModelSerializer):
         data["supplier"] = obj
 
     # --- persistence ---
+    def validate(self, attrs):
+        items = attrs.get("items") or []
+        subtotal = sum(Decimal(i["qty"]) * Decimal(i["unit_price"]) for i in items)
+        tax_enabled = attrs.get("tax_enabled", True)
+        rate = attrs.get("tax_rate")
+        if tax_enabled and rate is not None:
+            attrs["tax_amount"] = (subtotal * (Decimal(rate) / Decimal("100"))).quantize(Decimal("0.01"))
+        return attrs
+
+    def _strip_non_model_flags(self, data: dict) -> None:
+        # Remove flags we use for computation but which are not model fields
+        data.pop("tax_enabled", None)
+        data.pop("tax_rate", None)
+
     def create(self, validated):
         self._ensure_supplier(validated)
+        self._strip_non_model_flags(validated)        # ← NEW
 
         items_data = validated.pop("items", [])
         user = self.context["request"].user
@@ -193,9 +302,9 @@ class LPOSerializer(serializers.ModelSerializer):
         if not instance.is_editable:
             raise serializers.ValidationError("LPO is no longer editable.")
 
-        # allow changing supplier via id or supplier_name
         if "supplier" in validated or "supplier_name" in validated:
             self._ensure_supplier(validated)
+        self._strip_non_model_flags(validated)        # ← NEW
 
         items_data = validated.pop("items", None)
 
@@ -211,7 +320,6 @@ class LPOSerializer(serializers.ModelSerializer):
         instance.recompute_totals()
         instance.save(update_fields=["subtotal", "grand_total"])
         return instance
-
 
 # =========================
 # LPO Attachment

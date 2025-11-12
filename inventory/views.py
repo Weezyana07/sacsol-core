@@ -8,14 +8,15 @@ from django.db import transaction, models
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter, extend_schema_view
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.exceptions import PermissionDenied
+from core.roles import in_groups, is_owner
 
 from accounts.permissions import IsSuperAdmin
 
 from .models import InventoryEntry, AuditLog, InventoryAttachment
-from .permissions import InventoryWritePolicy
+from .permissions import InventoryCreatePolicy, InventoryListOwnerOnly
 from .filters import apply_inventory_filters
 
 from .serializers import InventoryAttachmentSerializer, InventoryEntrySerializer, AuditLogSerializer
@@ -50,23 +51,40 @@ LIST_PARAMS = [
     OpenApiParameter(name="limit", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY),
     OpenApiParameter(name="offset", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY),
 ]
+COMMON_4XX = {
+    400: OpenApiResponse(description="Bad Request"),
+    401: OpenApiResponse(description="Unauthorized"),
+    403: OpenApiResponse(description="Forbidden"),
+    404: OpenApiResponse(description="Not Found"),
+}
 
+@extend_schema_view(
+    list=extend_schema(summary="List inventory entries", responses={200: InventoryEntrySerializer(many=True), **COMMON_4XX}),
+    retrieve=extend_schema(summary="Get inventory entry", responses={200: InventoryEntrySerializer, **COMMON_4XX}),
+    create=extend_schema(summary="Create inventory entry", responses={201: InventoryEntrySerializer, **COMMON_4XX}),
+    update=extend_schema(summary="Replace inventory entry", responses={200: InventoryEntrySerializer, **COMMON_4XX}),
+    partial_update=extend_schema(summary="Update inventory entry", responses={200: InventoryEntrySerializer, **COMMON_4XX}),
+    destroy=extend_schema(summary="Delete inventory entry", responses={204: OpenApiResponse(description="No content"), **COMMON_4XX}),
+)
 class InventoryViewSet(viewsets.ModelViewSet):
     queryset = InventoryEntry.objects.filter(deleted=False)
     serializer_class = InventoryEntrySerializer
-    permission_classes = [ InventoryWritePolicy]  
+    permission_classes = [InventoryListOwnerOnly]  
     parser_classes = (JSONParser, MultiPartParser, FormParser)
 
     def get_permissions(self):
+        # superadmin-only special cases
         if getattr(self, "action", None) in {"import_excel", "audit_logs"}:
             return [IsSuperAdmin()]
+        # allow staff/manager/owner to POST (create) to /api/inventory/
+        if getattr(self, "action", None) == "create":
+            return [InventoryCreatePolicy()]
+        # default: owner-only reads
         return [perm() for perm in self.permission_classes]
     
     def get_queryset(self):
-        qs = super().get_queryset()
-        # spectacular may call without a real request
-        qparams = getattr(self.request, "query_params", {}) or {}
-        return apply_inventory_filters(qs, qparams)
+        qs = InventoryEntry.objects.filter(deleted=False).order_by("-date", "-created_at")
+        return apply_inventory_filters(qs, self.request.query_params)
 
     # ---- audit logging centralized here ----
     def perform_create(self, serializer):
@@ -74,6 +92,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
         obj = serializer.save(created_by=self.request.user)
         AuditLog.objects.create(entry=obj, user=self.request.user,
                                 action="create", changes=_json_safe(serializer.validated_data))
+        self.headers = {"Location": f"/api/inventory/{obj.pk}"}
 
     def perform_update(self, serializer):
         # Only superuser passes permission, so no extra check needed
@@ -87,32 +106,19 @@ class InventoryViewSet(viewsets.ModelViewSet):
             AuditLog.objects.create(entry=obj, user=self.request.user,
                                     action="update", changes=_json_safe(delta))
 
+    def retrieve(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if is_owner(request.user) or in_groups(request.user, "Manager") or obj.created_by_id == request.user.id:
+            return super().retrieve(request, *args, **kwargs)
+        return Response({"detail":"Not allowed."}, status=403)
+
     def perform_destroy(self, instance):
         instance.soft_delete()
         AuditLog.objects.create(entry=instance, user=self.request.user, action="soft_delete")
 
-    # def create(self, request, *args, **kwargs):
-    #     if not request.user.is_superuser:
-    #         raise PermissionDenied("Only superadmin can create inventory.")
-    #     return super().create(request, *args, **kwargs)
-
-    # def update(self, request, *args, **kwargs):
-    #     if not request.user.is_superuser:
-    #         raise PermissionDenied("Only superadmin can update inventory.")
-    #     return super().update(request, *args, **kwargs)
-
-    # def partial_update(self, request, *args, **kwargs):
-    #     if not request.user.is_superuser:
-    #         raise PermissionDenied("Only superadmin can update inventory.")
-    #     return super().partial_update(request, *args, **kwargs)
-
-    # def destroy(self, request, *args, **kwargs):
-    #     if not request.user.is_superuser:
-    #         raise PermissionDenied("Only superadmin can delete inventory.")
-    #     return super().destroy(request, *args, **kwargs)
-    
     # ---- list (OpenAPI) ----
     @extend_schema(
+        summary="List inventory entries",
         parameters=LIST_PARAMS,
         responses={200: InventoryEntrySerializer(many=True)},
         tags=["Inventory"],
@@ -123,14 +129,17 @@ class InventoryViewSet(viewsets.ModelViewSet):
 
     # ---- summary ----
     @extend_schema(
-        parameters=LIST_PARAMS[:4],  # q, status, from, to
-        responses={200: OpenApiTypes.OBJECT},
+        summary="Inventory KPIs (global)",
+        parameters=LIST_PARAMS[:4],
+        responses={200: OpenApiTypes.OBJECT, **COMMON_4XX},
         tags=["Inventory"],
         operation_id="inventory_summary",
     )
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
     def summary(self, request):
+        # GLOBAL: no per-user scoping here
         qs = self.filter_queryset(self.get_queryset())
+
         total = qs.count()
         by_status = {k: qs.filter(status=k).count() for k, _ in InventoryEntry.STATUS_CHOICES}
         totals = qs.aggregate(
@@ -139,23 +148,54 @@ class InventoryViewSet(viewsets.ModelViewSet):
         )
         return Response({"total": total, "by_status": by_status, **totals})
 
+    # ---- recent (GLOBAL for dashboard) ----
+    @extend_schema(
+        summary="Recent inventory entries",
+        parameters=LIST_PARAMS,
+        responses={200: InventoryEntrySerializer(many=True), **COMMON_4XX},
+        tags=["Inventory"],
+        operation_id="inventory_recent",
+    )
+    @action(detail=False, methods=["get"], url_path="recent", permission_classes=[permissions.IsAuthenticated])
+    def recent(self, request):
+        qs = self.filter_queryset(self.get_queryset())
+        limit = int(request.query_params.get("limit", 25))
+        data = InventoryEntrySerializer(qs.order_by("-date", "-created_at")[:limit], many=True).data
+        return Response(data)
+
+    # ---- sample (GLOBAL for dashboard) ----
+    @extend_schema(
+        summary="Sampled inventory entries",
+        parameters=LIST_PARAMS,
+        responses={200: InventoryEntrySerializer(many=True), **COMMON_4XX},
+        tags=["Inventory"],
+        operation_id="inventory_sample",
+    )
+    @action(detail=False, methods=["get"], url_path="sample", permission_classes=[permissions.IsAuthenticated])
+    def sample(self, request):
+        qs = self.filter_queryset(self.get_queryset())
+        limit = int(request.query_params.get("limit", 200))
+        data = InventoryEntrySerializer(qs.order_by("-date", "-created_at")[:limit], many=True).data
+        return Response(data)
+
     # ---- import (.xlsx/.csv) ----
+    @extend_schema(
+        summary="Import inventory from Excel/CSV",
+        description=(
+            "Upload .xlsx or .csv via multipart/form-data with field `file`.\n"
+            "Required columns: date, truck_registration, quantity (aliases supported)."
+        ),
+        request={"multipart/form-data": {"type": "object", "properties": {"file": {"type": "string", "format": "binary"}}}},
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiResponse(description="Invalid file or content"), **COMMON_4XX},
+        tags=["Inventory"],
+        operation_id="inventory_import_excel",
+    )
     @action(
         detail=False,
         methods=["post"],
         url_path="import-excel",
         parser_classes=[MultiPartParser, FormParser],
         permission_classes=[IsSuperAdmin],
-    )
-    @extend_schema(
-        description=(
-            "Upload .xlsx or .csv via multipart/form-data with field `file`.\n"
-            "Required columns: date, truck_registration, quantity (aliases supported)."
-        ),
-        request={"multipart/form-data": {"type": "object", "properties": {"file": {"type": "string", "format": "binary"}}}},
-        responses={200: OpenApiTypes.OBJECT, 400: OpenApiResponse(description="Invalid file or content")},
-        tags=["Inventory"],
-        operation_id="inventory_import_excel",
     )
     def import_excel(self, request):
         if not request.user.is_superuser:
@@ -293,8 +333,9 @@ class InventoryViewSet(viewsets.ModelViewSet):
 
     # ---- export (CSV) ----
     @extend_schema(
+        summary="Export inventory as CSV",
         parameters=LIST_PARAMS[:4],  # q, status, from, to
-        responses={200: OpenApiResponse(description="CSV file", response=OpenApiTypes.BINARY)},
+        responses={200: OpenApiResponse(description="CSV file", response=OpenApiTypes.BINARY), **COMMON_4XX},
         tags=["Reports"],
         operation_id="inventory_export_csv",
         description="Download filtered inventory as CSV. Honors q, status, from, to.",
@@ -326,16 +367,17 @@ class InventoryViewSet(viewsets.ModelViewSet):
         return resp
 
     # --- NEW: nested audit logs for a specific entry ---
+    @extend_schema(
+        summary="List audit logs for an entry",
+        responses={200: AuditLogSerializer(many=True), **COMMON_4XX},
+        operation_id="inventory_audit_logs",
+        description="List audit events for a specific inventory entry (most recent first).",
+    )
     @action(
         detail=True,
         methods=["get"],
         url_path="audit-logs",
         permission_classes=[IsSuperAdmin],
-    )
-    @extend_schema(
-        responses={200: AuditLogSerializer(many=True)},
-        operation_id="inventory_audit_logs",
-        description="List audit events for a specific inventory entry (most recent first).",
     )
     def audit_logs(self, request, pk=None):
         if not request.user.is_superuser:
@@ -353,13 +395,32 @@ class InventoryViewSet(viewsets.ModelViewSet):
 
 
 # --- NEW: Standalone read-only viewset (optional but handy for admin tools) ---
-@extend_schema(
-    parameters=[
-        OpenApiParameter(name="entry", type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, description="Filter by InventoryEntry ID (UUID)"),
-        OpenApiParameter(name="user", type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, description="Filter by username"),
-        OpenApiParameter(name="action", type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, description="Filter by action (create/update/soft_delete)"),
-    ],
-    tags=["Inventory"],
+# @extend_schema(
+#     parameters=[
+#         OpenApiParameter(name="entry", type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, description="Filter by InventoryEntry ID (UUID)"),
+#         OpenApiParameter(name="user", type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, description="Filter by username"),
+#         OpenApiParameter(name="action", type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, description="Filter by action (create/update/soft_delete)"),
+#     ],
+#     tags=["Inventory"],
+# )
+COMMON_4XX = {
+    400: OpenApiResponse(description="Bad Request"),
+    401: OpenApiResponse(description="Unauthorized"),
+    403: OpenApiResponse(description="Forbidden"),
+    404: OpenApiResponse(description="Not Found"),
+}
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List audit logs",
+        operation_id="audit_logs_list",
+        responses={200: AuditLogSerializer(many=True), **COMMON_4XX},
+    ),
+    retrieve=extend_schema(
+        summary="Get audit log",
+        operation_id="audit_logs_retrieve",
+        responses={200: AuditLogSerializer, **COMMON_4XX},
+    ),
 )
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     """Superadmin-only read-only listing of audit events."""
@@ -381,20 +442,37 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(action=action)
 
         return qs
-    
+
+
+COMMON_4XX = {
+    400: OpenApiResponse(description="Bad Request"),
+    401: OpenApiResponse(description="Unauthorized"),
+    403: OpenApiResponse(description="Forbidden"),
+    404: OpenApiResponse(description="Not Found"),
+}
+@extend_schema_view(
+    list=extend_schema(summary="List inventory entries", responses={200: InventoryEntrySerializer(many=True),  **COMMON_4XX}),
+    retrieve=extend_schema(summary="Get inventory entry", responses={200: InventoryEntrySerializer, **COMMON_4XX}),
+    create=extend_schema(summary="Create inventory entry", responses={201: InventoryEntrySerializer, **COMMON_4XX}),
+    update=extend_schema(summary="Replace inventory entry", responses={200: InventoryEntrySerializer, **COMMON_4XX}),
+    partial_update=extend_schema(summary="Update inventory entry", responses={200: InventoryEntrySerializer, **COMMON_4XX}),
+    destroy=extend_schema(summary="Delete inventory entry", responses={204: OpenApiResponse(description="No content"), **COMMON_4XX}),
+)
 class InventoryEntryViewSet(viewsets.ModelViewSet):
     queryset = InventoryEntry.objects.all()
     serializer_class = InventoryEntrySerializer       
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [InventoryCreatePolicy]
 
     @extend_schema(                                       
         methods=['get'],
+        summary="List entry attachments",   
         tags=["Inventory / Attachments"],
         operation_id="inventory_entry_attachments_list",
-        responses=InventoryAttachmentSerializer(many=True),
+        responses={200: InventoryAttachmentSerializer(many=True), **COMMON_4XX},
     )
     @extend_schema(                                     
         methods=['post'],
+        summary="Upload entry attachment",
         tags=["Inventory / Attachments"],
         operation_id="inventory_entry_attachments_create",
         request={"multipart/form-data": {
@@ -405,7 +483,7 @@ class InventoryEntryViewSet(viewsets.ModelViewSet):
             },
             "required": ["file"],
         }},
-        responses={201: InventoryAttachmentSerializer},
+        responses={201: InventoryAttachmentSerializer, **COMMON_4XX},
     )
     @action(detail=True, methods=["get", "post"], url_path="attachments")
     def attachments(self, request, pk=None):
@@ -490,7 +568,12 @@ class InventoryEntryViewSet(viewsets.ModelViewSet):
 
         return Response({"detail": "Unsupported file type."}, status=400)
 
-    @extend_schema(tags=["Inventory / Attachments"], operation_id="inventory_entry_delete_attachment")
+    @extend_schema(tags=["Inventory / Attachments"],
+                    summary="Delete entry attachment", 
+                    operation_id="inventory_entry_delete_attachment",
+                    responses={204: OpenApiResponse(description="No content"), **COMMON_4XX},  # ✅
+    
+                    )
     @action(detail=True, methods=["delete"], url_path=r"attachments/(?P<att_id>\d+)")
     def delete_attachment(self, request, pk=None, att_id=None):
         entry = self.get_object()
@@ -500,3 +583,8 @@ class InventoryEntryViewSet(viewsets.ModelViewSet):
         # Add your permission rule if needed (e.g., only managers delete)
         att.delete()
         return Response(status=204)
+
+    def perform_create(self, serializer):
+        obj = serializer.save()
+        # optional: create audit log
+        AuditLog.objects.create(entry=obj, user=self.request.user, action="create", changes=None)

@@ -77,7 +77,9 @@ class LPO(models.Model):
 
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="lpos_created")
     approved_by = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True, related_name="lpos_approved")
-
+    submitted_by = models.ForeignKey(        # ← NEW
+        User, on_delete=models.PROTECT, null=True, blank=True, related_name="lpos_submitted"
+    )
     # simple soft-delete flag (kept from your draft)
     deleted = models.BooleanField(default=False)
 
@@ -119,6 +121,7 @@ class LPO(models.Model):
         if self.items.count() == 0 or self.grand_total <= 0:
             raise ValueError("Cannot submit without items and totals.")
         self.status = self.STATUS_SUBMITTED
+        self.submitted_by = user                 # ← NEW
         self.submitted_at = timezone.now()
 
     def approve(self, user) -> None:
@@ -197,7 +200,6 @@ class GoodsReceiptItem(models.Model):
         if self.qty_received > remaining:
             raise ValidationError(f"Qty exceeds remaining ({remaining}).")
 
-# procurement/models.py
 class AuditLog(models.Model):
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
