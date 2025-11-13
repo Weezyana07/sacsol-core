@@ -10,23 +10,41 @@ paths:
   /api/audit-logs/:
     get:
       operationId: audit_logs_list
-      description: Superadmin-only read-only listing of audit events.
-      summary: List audit logs
+      summary: Unified audit feed (Inventory + LPO)
       parameters:
-      - name: limit
-        required: false
-        in: query
-        description: Number of results to return per page.
+      - in: query
+        name: action
+        schema:
+          type: string
+        description: create/update/submitted/approved/cancelled/soft_delete
+      - in: query
+        name: entry
+        schema:
+          type: string
+        description: UUID / entry code / LPO number
+      - in: query
+        name: limit
         schema:
           type: integer
-      - name: offset
-        required: false
-        in: query
-        description: The initial index from which to return the results.
+      - in: query
+        name: offset
         schema:
           type: integer
+      - in: query
+        name: source
+        schema:
+          type: string
+          enum:
+          - inventory
+          - lpo
+        description: Limit by source
+      - in: query
+        name: user
+        schema:
+          type: string
+        description: Username icontains
       tags:
-      - audit-logs
+      - Core / Audit
       security:
       - jwtAuth: []
       - jwtAuth: []
@@ -35,16 +53,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedAuditLogList'
+                $ref: '#/components/schemas/PaginatedAuditRowOutList'
           description: ''
-        '400':
-          description: Bad Request
         '401':
-          description: Unauthorized
+          description: Authentication credentials were not provided or are invalid.
         '403':
-          description: Forbidden
-        '404':
-          description: Not Found
+          description: You do not have permission to perform this action.
   /api/audit-logs/{id}/:
     get:
       operationId: audit_logs_retrieve
@@ -2347,6 +2361,41 @@ components:
           type: string
           format: date-time
           readOnly: true
+    AuditRowOut:
+      type: object
+      properties:
+        id:
+          type: string
+        source:
+          enum:
+          - inventory
+          - lpo
+          type: string
+          description: |-
+            * `inventory` - inventory
+            * `lpo` - lpo
+          x-spec-enum-id: 8e87a0b6e65dc87d
+        entry_id:
+          type: string
+        entry_label:
+          type: string
+          nullable: true
+        user_username:
+          type: string
+        action:
+          type: string
+        changes: {}
+        timestamp:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - action
+      - entry_id
+      - id
+      - source
+      - timestamp
+      - user_username
     ChangeOwnPasswordRequest:
       type: object
       properties:
@@ -2771,10 +2820,18 @@ components:
           format: decimal
           pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
           readOnly: true
+        tax_enabled:
+          type: boolean
+          default: true
+        tax_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
         tax_amount:
           type: string
           format: decimal
-          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         discount_amount:
           type: string
           format: decimal
@@ -2823,6 +2880,18 @@ components:
           readOnly: true
         submitted_by_name:
           type: string
+          readOnly: true
+        can_submit:
+          type: boolean
+          readOnly: true
+        can_approve:
+          type: boolean
+          readOnly: true
+        can_cancel:
+          type: boolean
+          readOnly: true
+        can_receive:
+          type: boolean
           readOnly: true
       required:
       - items
@@ -2899,6 +2968,19 @@ components:
           format: decimal
           pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
           readOnly: true
+        total_received:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          readOnly: true
+        received_so_far:
+          type: number
+          format: double
+          readOnly: true
+        remaining:
+          type: number
+          format: double
+          readOnly: true
       required:
       - qty
       - unit_price
@@ -2944,10 +3026,18 @@ components:
         payment_terms:
           type: string
           maxLength: 255
+        tax_enabled:
+          type: boolean
+          default: true
+        tax_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
         tax_amount:
           type: string
           format: decimal
-          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         discount_amount:
           type: string
           format: decimal
@@ -3021,6 +3111,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AuditLog'
+    PaginatedAuditRowOutList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditRowOut'
     PaginatedGoodsReceiptList:
       type: object
       required:
@@ -3324,10 +3437,18 @@ components:
         payment_terms:
           type: string
           maxLength: 255
+        tax_enabled:
+          type: boolean
+          default: true
+        tax_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
         tax_amount:
           type: string
           format: decimal
-          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         discount_amount:
           type: string
           format: decimal

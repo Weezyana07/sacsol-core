@@ -5,7 +5,7 @@ from django.db.models import Q
 from rest_framework import permissions, serializers
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import LimitOffsetPagination
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes, OpenApiResponse
 
 from inventory.models import AuditLog as InvAuditLog
 from procurement.models import AuditLog as LPOAuditLog, LPO
@@ -78,19 +78,23 @@ def _lpo_map(r):
 
 @extend_schema(
     tags=["Core / Audit"],
-    operation_id="audit_logs_list",
     summary="Unified audit feed (Inventory + LPO)",
     parameters=[
-        OpenApiParameter("user", OpenApiParameter.QUERY, OpenApiTypes.STR, description="Username icontains"),
-        OpenApiParameter("action", OpenApiParameter.QUERY, OpenApiTypes.STR, description="create/update/submitted/approved/cancelled/soft_delete"),
-        OpenApiParameter("entry", OpenApiParameter.QUERY, OpenApiTypes.STR, description="UUID / entry code / LPO number"),
-        OpenApiParameter("source", OpenApiParameter.QUERY, OpenApiTypes.STR, enum=["inventory", "lpo"], description="Limit by source"),
-        OpenApiParameter("limit", OpenApiParameter.QUERY, OpenApiTypes.INT),
-        OpenApiParameter("offset", OpenApiParameter.QUERY, OpenApiTypes.INT),
+        OpenApiParameter(name="user", location=OpenApiParameter.QUERY, required=False, type=OpenApiTypes.STR, description="Username icontains", ),
+        OpenApiParameter(name="action", location=OpenApiParameter.QUERY, required=False, type=OpenApiTypes.STR, description="create/update/submitted/approved/cancelled/soft_delete",),
+        OpenApiParameter( name="entry", location=OpenApiParameter.QUERY, required=False, type=OpenApiTypes.STR, description="UUID / entry code / LPO number",),
+        OpenApiParameter(name="source", location=OpenApiParameter.QUERY, required=False, type=OpenApiTypes.STR, enum=["inventory", "lpo"], description="Limit by source",),
+        OpenApiParameter(name="limit", location=OpenApiParameter.QUERY, required=False, type=OpenApiTypes.INT,),
+        OpenApiParameter(name="offset", location=OpenApiParameter.QUERY, required=False, type=OpenApiTypes.INT,),
     ],
-    responses={200: AuditRowOut(many=True)},
+    responses={
+        200: AuditRowOut(many=True),
+        401: OpenApiResponse(description="Authentication credentials were not provided or are invalid."),
+        403: OpenApiResponse(description="You do not have permission to perform this action."),
+    },
 )
 class AuditLogsList(ListAPIView):
+    ...
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = AuditRowOut
     pagination_class = Pager
